@@ -136,6 +136,116 @@ pip install fastapi uvicorn websockets
 uvicorn server:app --reload --host 0.0.0.0 --port 8000
 ```
 
+## AI 编程技能
+
+本项目集成了 **65 个 AI 编程技能**，分为两大框架：
+
+### Superpowers-zh（20 个技能）
+
+中文增强版 AI 编程工作流技能。
+
+| 技能 | 说明 |
+|------|------|
+| `/brainstorming` | 在实现前探索用户意图、需求和设计 |
+| `/test-driven-development` | 先写测试再写实现（TDD） |
+| `/systematic-debugging` | 系统化调试，先调查根因再修复 |
+| `/writing-plans` | 编写多步骤实现计划 |
+| `/executing-plans` | 按计划执行，设置审查检查点 |
+| `/verification-before-completion` | 完成前运行验证命令，用证据证明成功 |
+| `/requesting-code-review` | 完成后请求代码审查 |
+| `/receiving-code-review` | 处理代码审查反馈 |
+| `/chinese-code-review` | 中文代码审查规范 |
+| `/chinese-commit-conventions` | 中文 Git 提交规范 |
+| `/chinese-documentation` | 中文技术文档写作规范 |
+| `/chinese-git-workflow` | 国内 Git 平台工作流（Gitee、Coding 等） |
+| `/finishing-a-development-branch` | 开发分支收尾（合并、PR、清理） |
+| `/subagent-driven-development` | 使用子代理并行执行计划 |
+| `/dispatching-parallel-agents` | 并行调度多个独立任务 |
+| `/using-git-worktrees` | 隔离开发环境 |
+| `/mcp-builder` | 构建 MCP 服务器 |
+| `/workflow-runner` | 运行 YAML 多角色协作工作流 |
+| `/writing-skills` | 创建和验证 AI 技能 |
+| `/using-superpowers` | 如何查找和使用技能 |
+
+### Gstack（45 个技能）
+
+专业软件工程工作流技能框架。
+
+#### 规划审查
+
+| 技能 | 说明 |
+|------|------|
+| `/gstack-office-hours` | YC Office Hours — 产品想法验证和头脑风暴 |
+| `/gstack-plan-ceo-review` | CEO 视角审查，找到真正的 10 星产品 |
+| `/gstack-plan-eng-review` | 锁定架构、数据流、边界情况和测试 |
+| `/gstack-plan-design-review` | 设计维度评分（0-10），解释 10 分是什么样 |
+| `/gstack-plan-devex-review` | 开发者体验审查（TTHW、魔法时刻、摩擦点） |
+| `/gstack-plan-tune` | 自动调整问题敏感度 |
+| `/gstack-autoplan` | 一键运行 CEO → 设计 → 工程 → DX 全套审查 |
+| `/gstack-design-consultation` | 从零构建完整设计系统 |
+
+#### 实现与审查
+
+| 技能 | 说明 |
+|------|------|
+| `/gstack-review` | 合并前 PR 审查，找 CI 会漏掉的 bug |
+| `/gstack-codex` | 用 OpenAI Codex 获取第二意见 |
+| `/gstack-investigate` | 系统化根因调试，先调查再修复 |
+| `/gstack-design-review` | 真站视觉审计 + 修复循环 |
+| `/gstack-design-shotgun` | 生成多个设计变体，对比迭代 |
+| `/gstack-design-html` | 生成高质量 HTML/CSS |
+| `/gstack-devex-review` | 真实开发者体验审计 |
+| `/gstack-qa` | 打开真实浏览器，找 bug，修，再验证 |
+| `/gstack-qa-only` | 只报告 bug，不改代码 |
+| `/gstack-scrape` | 网页数据抓取 |
+| `/gstack-skillify` | 将成功的抓取流程固化为永久技能 |
+
+#### 发布与部署
+
+| 技能 | 说明 |
+|------|------|
+| `/gstack-ship` | 跑测试、审查、推送、开 PR |
+| `/gstack-land-and-deploy` | 合并 PR、等 CI、部署、验证生产环境 |
+| `/gstack-canary` | 部署后监控循环 |
+| `/gstack-landing-report` | 发布队列只读面板 |
+| `/gstack-document-release` | 更新文档匹配已发布内容 |
+| `/gstack-setup-deploy` | 一次性部署配置检测 |
+| `/gstack-upgrade` | 更新 gstack 到最新版本 |
+
+#### 运维与记忆
+
+| 技能 | 说明 |
+|------|------|
+| `/gstack-context-save` | 保存当前工作状态（git、决策、剩余工作） |
+| `/gstack-context-restore` | 从保存的状态恢复，跨会话 |
+| `/gstack-learn` | 管理跨会话学习内容 |
+| `/gstack-retro` | 每周回顾，含个人明细和发布连胜 |
+| `/gstack-health` | 代码质量面板（类型检查、lint、测试、死代码） |
+| `/gstack-benchmark` | 性能回归检测 |
+| `/gstack-benchmark-models` | 跨模型基准测试（Claude/GPT/Gemini 对比） |
+| `/gstack-cso` | OWASP Top 10 + STRIDE 安全审计 |
+| `/gstack-setup-gbrain` | 设置跨机器会话记忆同步 |
+| `/gstack-sync-gbrain` | 保持 gbrain 与仓库同步 |
+
+#### 浏览器与代理
+
+| 技能 | 说明 |
+|------|------|
+| `/gstack-browse` | 无头浏览器操作（导航、截图、交互） |
+| `/gstack-open-gstack-browser` | 启动可视化 GStack Browser |
+| `/gstack-setup-browser-cookies` | 导入浏览器 Cookie 用于认证测试 |
+| `/gstack-pair-agent` | 配对远程 AI 代理 |
+
+#### 安全与范围控制
+
+| 技能 | 说明 |
+|------|------|
+| `/gstack-careful` | 销毁性命令前警告（rm -rf、DROP TABLE 等） |
+| `/gstack-freeze` | 锁定只允许编辑一个目录 |
+| `/gstack-guard` | 同时激活 careful + freeze |
+| `/gstack-unfreeze` | 解除编辑限制 |
+| `/gstack-make-pdf` | 将 Markdown 转为出版级 PDF |
+
 ## License
 
 MIT
