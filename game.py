@@ -4,6 +4,13 @@ from itertools import combinations
 from dataclasses import dataclass, field
 from typing import Optional
 
+# 下注模式
+BET_MODES = {
+    "classic": "经典模式",
+    "raise": "加注模式",
+    "tournament": "锦标赛",
+}
+
 
 # 花色 emoji
 SUIT_SYMBOLS = {"spades": "♠", "hearts": "♥", "diamonds": "♦", "clubs": "♣"}
@@ -111,20 +118,32 @@ def _tie_break(cards: list[Card]) -> int:
 
 
 class GameRoom:
-    def __init__(self, room_id: str, host_name: str):
+    def __init__(self, room_id: str, host_name: str, settings: dict = None):
         self.room_id = room_id
         self.host_name = host_name
-        self.players: list[dict] = []  # {"name": str, "hand": list[Card], "confirmed": bool, "result": HandResult}
-        self.phase = "waiting"  # waiting -> dealing -> playing -> finished
+        self.players: list[dict] = []  # {"name": str, "hand": list[Card], "confirmed": bool, "result": HandResult, "chips": int, "folded": bool, "bet": int}
+        self.phase = "waiting"  # waiting -> dealing -> betting -> playing -> finished
         self.round_number = 0
         self.deck: list[Card] = []
+        self.chat: list[dict] = []  # [{"name": str, "message": str, "time": str}]
+        # 游戏设置
+        s = settings or {}
+        self.bet_mode = s.get("bet_mode", "classic")  # classic / raise / tournament
+        self.initial_chips = s.get("initial_chips", 1000)
+        self.base_bet = s.get("base_bet", 10)
+        # 下注状态
+        self.pot = 0
+        self.current_bet = 0  # 当前需要跟注的金额
 
     def add_player(self, name: str) -> bool:
         if any(p["name"] == name for p in self.players):
             return False
         if len(self.players) >= 20:
             return False
-        self.players.append({"name": name, "hand": [], "confirmed": False, "result": None})
+        self.players.append({
+            "name": name, "hand": [], "confirmed": False, "result": None,
+            "chips": self.initial_chips, "folded": False, "bet": 0,
+        })
         return True
 
     def remove_player(self, name: str):
@@ -137,33 +156,137 @@ class GameRoom:
         if not self.can_start():
             return False
         self.round_number += 1
-        self.phase = "dealing"
+        self.pot = 0
+        self.current_bet = 0
         self.deck = _create_deck()
         random.shuffle(self.deck)
         for p in self.players:
             p["hand"] = [self.deck.pop() for _ in range(5)]
             p["confirmed"] = False
             p["result"] = None
-        self.phase = "playing"
+            p["folded"] = False
+            p["bet"] = 0
+            # 锦标赛模式：跳过已淘汰玩家
+            if self.bet_mode == "tournament" and p["chips"] <= 0:
+                p["folded"] = True
+
+        # 经典模式：自动扣底注
+        if self.bet_mode == "classic":
+            for p in self.players:
+                if p["chips"] > 0:
+                    bet = min(self.base_bet, p["chips"])
+                    p["chips"] -= bet
+                    p["bet"] = bet
+                    self.pot += bet
+            self.phase = "playing"
+        # 锦标赛模式：扣盲注
+        elif self.bet_mode == "tournament":
+            for p in self.players:
+                if p["chips"] > 0 and not p["folded"]:
+                    bet = min(self.base_bet, p["chips"])
+                    p["chips"] -= bet
+                    p["bet"] = bet
+                    self.pot += bet
+            self.phase = "playing"
+        # 加注模式：发牌后进入下注阶段
+        elif self.bet_mode == "raise":
+            self.current_bet = self.base_bet
+            self.phase = "betting"
         return True
+
+    def place_bet(self, name: str, action: str, amount: int = 0) -> dict:
+        """加注模式下注: action = call / raise / fold"""
+        for p in self.players:
+            if p["name"] != name or p["folded"] or p["confirmed"]:
+                continue
+            to_call = self.current_bet - p["bet"]
+            if action == "fold":
+                p["folded"] = True
+                return {"ok": True, "action": "fold"}
+            elif action == "call":
+                pay = min(to_call, p["chips"])
+                p["chips"] -= pay
+                p["bet"] += pay
+                self.pot += pay
+                return {"ok": True, "action": "call", "amount": pay}
+            elif action == "raise":
+                raise_to = max(amount, self.current_bet + self.base_bet)
+                pay = raise_to - p["bet"]
+                pay = min(pay, p["chips"])
+                p["chips"] -= pay
+                p["bet"] += pay
+                self.pot += pay
+                self.current_bet = p["bet"]
+                return {"ok": True, "action": "raise", "amount": p["bet"]}
+        return {"ok": False}
+
+    def check_betting_done(self) -> bool:
+        """检查下注是否完成：所有未弃牌玩家都已跟注"""
+        active = [p for p in self.players if not p["folded"]]
+        if len(active) <= 1:
+            return True
+        return all(p["bet"] == self.current_bet or p["chips"] == 0 for p in active)
+
+    def finish_betting(self):
+        """下注完成，进入亮牌阶段"""
+        active = [p for p in self.players if not p["folded"]]
+        if len(active) == 1:
+            # 只剩一人，直接获胜
+            winner = active[0]
+            winner["chips"] += self.pot
+            winner["result"] = HandResult("none", 0, 0, "对手弃牌")
+            self.pot = 0
+            self.phase = "finished"
+            return True
+        self.phase = "playing"
+        return False
 
     def confirm_cards(self, name: str) -> bool:
         for p in self.players:
-            if p["name"] == name and not p["confirmed"]:
+            if p["name"] == name and not p["confirmed"] and not p["folded"]:
                 p["confirmed"] = True
                 p["result"] = evaluate_hand(p["hand"])
                 break
-        if all(p["confirmed"] for p in self.players):
-            self.phase = "finished"
+        active = [p for p in self.players if not p["folded"]]
+        if all(p["confirmed"] for p in active):
+            self._settle_round()
             return True
         return False
+
+    def _settle_round(self):
+        """结算本轮"""
+        self.phase = "finished"
+        active = [p for p in self.players if not p["folded"] and p["result"]]
+        if not active:
+            return
+        # 按牌型分数排序
+        active.sort(key=lambda p: p["result"].type_score, reverse=True)
+        winner = active[0]
+        winner["chips"] += self.pot
+        self.pot = 0
+
+    def add_chat(self, name: str, message: str):
+        from datetime import datetime
+        self.chat.append({
+            "name": name,
+            "message": message[:200],
+            "time": datetime.now().strftime("%H:%M"),
+        })
+        # 只保留最近 50 条
+        if len(self.chat) > 50:
+            self.chat = self.chat[-50:]
 
     def get_state(self, viewer: str = None) -> dict:
         players_info = []
         for p in self.players:
-            info = {"name": p["name"], "confirmed": p["confirmed"]}
-            if self.phase in ("playing", "finished") and p["hand"]:
-                if p["confirmed"] or self.phase == "finished":
+            info = {
+                "name": p["name"], "confirmed": p["confirmed"],
+                "chips": p["chips"], "folded": p["folded"], "bet": p["bet"],
+            }
+            if self.phase in ("betting", "playing", "finished") and p["hand"]:
+                if p["folded"]:
+                    info["hand"] = [{"suit": "?", "rank": "?", "symbol": "?", "color": "gray"}] * 5
+                elif p["confirmed"] or self.phase == "finished":
                     info["hand"] = [c.to_dict() for c in p["hand"]]
                     if p["result"]:
                         info["result"] = p["result"].to_dict()
@@ -176,7 +299,8 @@ class GameRoom:
         results = []
         if self.phase == "finished":
             results = sorted(
-                [{"name": p["name"], "result": p["result"].to_dict()} for p in self.players],
+                [{"name": p["name"], "result": p["result"].to_dict(), "chips": p["chips"]}
+                 for p in self.players if p["result"]],
                 key=lambda x: x["result"]["score"], reverse=True
             )
 
@@ -188,4 +312,11 @@ class GameRoom:
             "players": players_info,
             "results": results,
             "viewer": viewer,
+            "pot": self.pot,
+            "current_bet": self.current_bet,
+            "bet_mode": self.bet_mode,
+            "bet_mode_name": BET_MODES.get(self.bet_mode, self.bet_mode),
+            "base_bet": self.base_bet,
+            "initial_chips": self.initial_chips,
+            "chat": self.chat[-20:],  # 只发最近 20 条
         }

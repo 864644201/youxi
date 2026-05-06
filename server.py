@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from game import GameRoom
+from game import GameRoom, BET_MODES
 
 app = FastAPI()
 
@@ -64,7 +64,8 @@ async def websocket_endpoint(ws: WebSocket):
                     await ws.send_json({"type": "error", "message": "请输入昵称"})
                     continue
                 room_id = _generate_room_id()
-                room = GameRoom(room_id, name)
+                settings = msg.get("settings", {})
+                room = GameRoom(room_id, name, settings)
                 room.add_player(name)
                 rooms[room_id] = room
                 player_rooms[room_id] = {ws_id}
@@ -114,6 +115,37 @@ async def websocket_endpoint(ws: WebSocket):
                 if not room:
                     continue
                 all_confirmed = room.confirm_cards(conn["name"])
+                await broadcast_room(conn["room"])
+
+            elif action == "place_bet":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                bet_action = msg.get("bet_action", "call")
+                amount = msg.get("amount", 0)
+                result = room.place_bet(conn["name"], bet_action, amount)
+                if result.get("ok"):
+                    # 检查下注是否完成
+                    if room.check_betting_done():
+                        solo_win = room.finish_betting()
+                    await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": "下注失败"})
+
+            elif action == "chat":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                message = msg.get("message", "").strip()
+                if not message:
+                    continue
+                room.add_chat(conn["name"], message)
                 await broadcast_room(conn["room"])
 
             elif action == "next_round":

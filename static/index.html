@@ -47,6 +47,85 @@ input[type="text"]:focus { border-color: #f0c040; }
 .btn-outline:hover { border-color: #fff; }
 .error { color: #ff6b6b; margin-top: 10px; font-size: .9em; }
 
+/* ---- 设置 ---- */
+.settings-group { margin-bottom: 10px; text-align: left; }
+.settings-group label { display: block; font-size: .85em; opacity: .7; margin-bottom: 4px; }
+.settings-group select {
+  width: 100%; padding: 8px 12px; border: 2px solid rgba(255,255,255,.2);
+  border-radius: 8px; background: rgba(255,255,255,.1); color: #fff;
+  font-size: .9em; outline: none;
+}
+.settings-group select option { background: #1a3a2e; color: #fff; }
+.settings-row { display: flex; gap: 12px; }
+.settings-row .settings-group { flex: 1; }
+.room-settings {
+  display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;
+  margin: 10px 0; font-size: .9em;
+}
+.room-settings .setting-tag {
+  background: rgba(240,192,64,.2); padding: 4px 12px; border-radius: 12px;
+}
+
+/* ---- 游戏布局 ---- */
+.game-main { display: flex; gap: 15px; }
+.game-left { flex: 1; min-width: 0; }
+
+/* ---- 筹码 ---- */
+.chip-display { font-size: .85em; color: #f0c040; margin-top: 2px; }
+.chip-change { font-size: .8em; margin-top: 2px; }
+.chip-change.win { color: #2ecc71; }
+.chip-change.lose { color: #e74c3c; }
+.pot-info {
+  background: rgba(240,192,64,.15); padding: 4px 14px; border-radius: 12px;
+  font-size: .9em; color: #f0c040; font-weight: bold;
+}
+
+/* ---- 下注按钮 ---- */
+.bet-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.bet-btns .btn { font-size: .9em; padding: 10px 20px; }
+.bet-amount-input {
+  width: 80px; padding: 8px; border: 2px solid rgba(255,255,255,.2);
+  border-radius: 8px; background: rgba(255,255,255,.1); color: #fff;
+  font-size: .9em; text-align: center; outline: none;
+}
+
+/* ---- 聊天 ---- */
+.chat-panel {
+  width: 240px; background: rgba(0,0,0,.3); border-radius: 12px;
+  display: flex; flex-direction: column; max-height: 500px;
+}
+.chat-header {
+  padding: 10px 14px; font-weight: bold; font-size: .9em;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.chat-messages {
+  flex: 1; overflow-y: auto; padding: 8px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+  min-height: 200px; max-height: 360px;
+}
+.chat-msg { font-size: .85em; line-height: 1.4; }
+.chat-msg .msg-name { color: #f0c040; font-weight: bold; }
+.chat-msg .msg-time { opacity: .4; font-size: .8em; margin-left: 4px; }
+.chat-input {
+  display: flex; gap: 6px; padding: 8px 12px;
+  border-top: 1px solid rgba(255,255,255,.1);
+}
+.chat-input input {
+  flex: 1; padding: 6px 10px; border: 1px solid rgba(255,255,255,.2);
+  border-radius: 8px; background: rgba(255,255,255,.1); color: #fff;
+  font-size: .85em; outline: none;
+}
+.chat-input .btn { padding: 6px 14px; font-size: .85em; }
+
+/* ---- 弃牌标记 ---- */
+.player-box.folded { opacity: .4; }
+.player-box.folded::after {
+  content: "已弃牌"; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); font-size: 1.2em; font-weight: bold;
+  color: #e74c3c;
+}
+.player-box { position: relative; }
+
 /* ---- 等待室 ---- */
 #waiting { text-align: center; padding-top: 40px; }
 #waiting .room-code {
@@ -183,6 +262,34 @@ input[type="text"]:focus { border-color: #f0c040; }
   <div class="lobby-card">
     <h2>创建房间</h2>
     <input type="text" id="createName" placeholder="你的昵称" maxlength="8">
+    <div class="settings-group">
+      <label>游戏模式</label>
+      <select id="betMode">
+        <option value="classic">经典模式 — 固定底注，亮牌比大小</option>
+        <option value="raise">加注模式 — 看牌后可加注/跟注/弃牌</option>
+        <option value="tournament">锦标赛 — 盲注递增，输光淘汰</option>
+      </select>
+    </div>
+    <div class="settings-row">
+      <div class="settings-group">
+        <label>初始筹码</label>
+        <select id="initialChips">
+          <option value="500">500</option>
+          <option value="1000" selected>1000</option>
+          <option value="2000">2000</option>
+          <option value="5000">5000</option>
+        </select>
+      </div>
+      <div class="settings-group">
+        <label>底注</label>
+        <select id="baseBet">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+    </div>
     <br>
     <button class="btn btn-gold" onclick="createRoom()">创建房间</button>
   </div>
@@ -201,6 +308,7 @@ input[type="text"]:focus { border-color: #f0c040; }
   <h2>等待开始</h2>
   <div class="room-code" id="roomCode" onclick="copyRoomCode()" title="点击复制">----</div>
   <p style="opacity:.6; font-size:.85em">点击房间号复制，发给朋友</p>
+  <div id="roomSettings" class="room-settings"></div>
   <div class="player-list" id="playerList"></div>
   <div class="start-area" id="startArea">
     <p class="hint">等待房主开始游戏...</p>
@@ -211,13 +319,26 @@ input[type="text"]:focus { border-color: #f0c040; }
 <div class="container" id="game" style="display:none">
   <div class="game-header">
     <span class="round" id="roundNum">第 1 轮</span>
+    <span class="pot-info" id="potInfo"></span>
     <span class="room-info" id="gameRoomInfo"></span>
   </div>
-  <div class="players-grid" id="playersGrid"></div>
-  <div class="my-result" id="myResult"></div>
-  <div class="my-hand" id="myHand"></div>
-  <div class="action-area" id="actionArea"></div>
-  <div id="results"></div>
+  <div class="game-main">
+    <div class="game-left">
+      <div class="players-grid" id="playersGrid"></div>
+      <div class="my-result" id="myResult"></div>
+      <div class="my-hand" id="myHand"></div>
+      <div class="action-area" id="actionArea"></div>
+      <div id="results"></div>
+    </div>
+    <div class="chat-panel" id="chatPanel">
+      <div class="chat-header">房间聊天</div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="发消息..." maxlength="200">
+        <button class="btn btn-gold" onclick="sendChat()">发</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -274,7 +395,12 @@ function handleMessage(msg) {
 function createRoom() {
   const name = document.getElementById('createName').value.trim();
   if (!name) { showToast('请输入昵称'); return; }
-  send({ action: 'create_room', name });
+  const settings = {
+    bet_mode: document.getElementById('betMode').value,
+    initial_chips: parseInt(document.getElementById('initialChips').value),
+    base_bet: parseInt(document.getElementById('baseBet').value),
+  };
+  send({ action: 'create_room', name, settings });
 }
 
 function joinRoom() {
@@ -287,6 +413,20 @@ function joinRoom() {
 function startGame() { send({ action: 'start_game' }); }
 function confirmCards() { send({ action: 'confirm_cards' }); }
 function nextRound() { send({ action: 'next_round' }); }
+
+function placeBet(action) {
+  const amountInput = document.getElementById('raiseAmount');
+  const amount = amountInput ? parseInt(amountInput.value) || 0 : 0;
+  send({ action: 'place_bet', bet_action: action, amount });
+}
+
+function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  send({ action: 'chat', message: msg });
+  input.value = '';
+}
 
 function copyRoomCode() {
   navigator.clipboard.writeText(roomId).then(() => showToast('房间号已复制!'));
@@ -306,6 +446,12 @@ function renderState() {
   if (s.phase === 'waiting') {
     showScreen('waiting');
     document.getElementById('roomCode').textContent = s.room_id;
+    // 显示房间设置
+    const modeNames = { classic: '经典模式', raise: '加注模式', tournament: '锦标赛' };
+    document.getElementById('roomSettings').innerHTML =
+      `<span class="setting-tag">${modeNames[s.bet_mode] || s.bet_mode}</span>` +
+      `<span class="setting-tag">筹码 ${s.initial_chips}</span>` +
+      `<span class="setting-tag">底注 ${s.base_bet}</span>`;
     const list = document.getElementById('playerList');
     list.innerHTML = s.players.map(p =>
       `<div class="player-tag${p.name === s.host ? ' host' : ''}">${esc(p.name)}</div>`
@@ -321,7 +467,11 @@ function renderState() {
   } else {
     showScreen('game');
     document.getElementById('roundNum').textContent = `第 ${s.round} 轮`;
-    document.getElementById('gameRoomInfo').textContent = `房间 ${s.room_id}`;
+    document.getElementById('gameRoomInfo').textContent = `房间 ${s.room_id} · ${s.bet_mode_name}`;
+
+    // 奖池
+    const potInfo = document.getElementById('potInfo');
+    potInfo.textContent = s.pot > 0 ? `奖池 ${s.pot}` : '';
 
     const grid = document.getElementById('playersGrid');
     grid.innerHTML = s.players.map(p => {
@@ -329,10 +479,14 @@ function renderState() {
       const isHost = p.name === s.host;
       const cardHtml = p.hand.map(c => renderCard(c, 50, 72)).join('');
       const resultText = p.result ? `<div class="result-text">${esc(p.result.display)}</div>` : '';
-      return `<div class="player-box${isMe ? ' me' : ''}${p.confirmed ? ' confirmed' : ''}">
+      const chipText = `<div class="chip-display">💰 ${p.chips}</div>`;
+      const betText = p.bet > 0 ? `<div style="font-size:.8em;opacity:.6">已下注 ${p.bet}</div>` : '';
+      return `<div class="player-box${isMe ? ' me' : ''}${p.confirmed ? ' confirmed' : ''}${p.folded ? ' folded' : ''}">
         <div class="player-name">${esc(p.name)}${isHost ? '<span class="crown"> 👑</span>' : ''}</div>
         <div class="hand-cards">${cardHtml}</div>
         ${resultText}
+        ${chipText}
+        ${betText}
       </div>`;
     }).join('');
 
@@ -360,7 +514,16 @@ function renderState() {
     }
 
     // 操作按钮
-    if (s.phase === 'playing' && me && !me.confirmed) {
+    if (s.phase === 'betting' && me && !me.folded) {
+      // 加注模式的下注界面
+      const toCall = s.current_bet - me.bet;
+      actionArea.innerHTML = `<div class="bet-btns">
+        ${toCall > 0 ? `<button class="btn btn-green" onclick="placeBet('call')">跟注 ${toCall}</button>` : `<button class="btn btn-green" onclick="placeBet('call')">看牌</button>`}
+        <input type="number" class="bet-amount-input" id="raiseAmount" value="${s.current_bet + s.base_bet}" min="${s.current_bet + s.base_bet}" step="${s.base_bet}">
+        <button class="btn btn-gold" onclick="placeBet('raise')">加注</button>
+        <button class="btn btn-red" onclick="placeBet('fold')">弃牌</button>
+      </div>`;
+    } else if (s.phase === 'playing' && me && !me.confirmed && !me.folded) {
       actionArea.innerHTML = '<button class="btn btn-gold" onclick="confirmCards()">亮牌</button>';
     } else if (s.phase === 'playing' && me && me.confirmed) {
       actionArea.innerHTML = '<p style="opacity:.6">已亮牌，等待其他玩家...</p>';
@@ -383,10 +546,20 @@ function renderState() {
           <span class="rank-num">${medals[i] || (i+1)}</span>
           <span class="rank-name">${esc(r.name)}</span>
           <span class="rank-hand">${r.result.display}</span>
+          <span style="margin-left:auto;font-size:.85em;color:#f0c040">💰 ${r.chips}</span>
         </div>`
       ).join('');
     } else {
       resultsDiv.innerHTML = '';
+    }
+
+    // 聊天
+    if (s.chat) {
+      const chatDiv = document.getElementById('chatMessages');
+      chatDiv.innerHTML = s.chat.map(m =>
+        `<div class="chat-msg"><span class="msg-name">${esc(m.name)}</span><span class="msg-time">${m.time}</span><br>${esc(m.message)}</div>`
+      ).join('');
+      chatDiv.scrollTop = chatDiv.scrollHeight;
     }
   }
 }
@@ -416,6 +589,11 @@ function showToast(msg) {
 document.getElementById('createName').addEventListener('keydown', e => { if (e.key === 'Enter') createRoom(); });
 document.getElementById('joinRoomId').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
 document.getElementById('joinName').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.activeElement === document.getElementById('chatInput')) {
+    sendChat();
+  }
+});
 
 // ---- 启动 ----
 connect();
