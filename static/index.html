@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>牛牛 - 在线纸牌游戏</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -16,9 +16,9 @@ body {
 .container { max-width: 900px; margin: 0 auto; padding: 20px; }
 
 /* ---- 大厅 ---- */
-#lobby { text-align: center; padding-top: 80px; }
+#lobby { text-align: center; padding-top: 60px; }
 #lobby h1 { font-size: 3em; margin-bottom: 10px; text-shadow: 2px 2px 8px rgba(0,0,0,.4); }
-#lobby .subtitle { opacity: .7; margin-bottom: 40px; font-size: 1.1em; }
+#lobby .subtitle { opacity: .7; margin-bottom: 30px; font-size: 1.1em; }
 .lobby-card {
   background: rgba(0,0,0,.25); border-radius: 16px; padding: 30px;
   max-width: 400px; margin: 0 auto 20px; backdrop-filter: blur(10px);
@@ -88,6 +88,10 @@ input[type="text"]:focus { border-color: #f0c040; }
   border-radius: 8px; background: rgba(255,255,255,.1); color: #fff;
   font-size: .9em; text-align: center; outline: none;
 }
+.bet-timer {
+  text-align: center; font-size: 1.2em; color: #f0c040;
+  margin-bottom: 8px; font-weight: bold;
+}
 
 /* ---- 聊天 ---- */
 .chat-panel {
@@ -129,7 +133,7 @@ input[type="text"]:focus { border-color: #f0c040; }
 /* ---- 等待室 ---- */
 #waiting { text-align: center; padding-top: 40px; }
 #waiting .room-code {
-  font-size: 2.5em; font-weight: bold; letter-spacing: 8px;
+  font-size: 2.5em; font-weight: bold; letter-spacing: 6px;
   background: rgba(0,0,0,.3); padding: 15px 30px; border-radius: 12px;
   display: inline-block; margin: 15px 0;
   cursor: pointer; transition: background .2s;
@@ -152,30 +156,30 @@ input[type="text"]:focus { border-color: #f0c040; }
 #game { padding-top: 10px; }
 .game-header {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 10px 0; margin-bottom: 10px;
+  padding: 10px 0; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;
 }
 .game-header .round { font-size: 1.2em; font-weight: bold; }
 .game-header .room-info { opacity: .6; font-size: .9em; }
 
 .players-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 15px; margin-bottom: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px; margin-bottom: 20px;
 }
 .player-box {
-  background: rgba(0,0,0,.3); border-radius: 12px; padding: 15px;
+  background: rgba(0,0,0,.3); border-radius: 12px; padding: 12px;
   text-align: center; border: 2px solid transparent; transition: all .3s;
 }
 .player-box.me { border-color: #f0c040; }
 .player-box.confirmed { border-color: #2ecc71; }
-.player-box .player-name { font-weight: bold; margin-bottom: 8px; font-size: .95em; }
+.player-box .player-name { font-weight: bold; margin-bottom: 8px; font-size: .9em; }
 .player-box .player-name .crown { font-size: .8em; }
 .player-box .hand-cards {
-  display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;
-  margin-bottom: 8px; min-height: 70px; align-items: center;
+  display: flex; gap: 3px; justify-content: center; flex-wrap: wrap;
+  margin-bottom: 6px; min-height: 60px; align-items: center;
 }
 .player-box .result-text {
-  font-size: 1.1em; font-weight: bold; min-height: 1.4em;
+  font-size: 1em; font-weight: bold; min-height: 1.4em;
 }
 .player-box .score-badge {
   display: inline-block; padding: 2px 10px; border-radius: 10px;
@@ -184,14 +188,14 @@ input[type="text"]:focus { border-color: #f0c040; }
 
 /* ---- 卡牌 ---- */
 .card {
-  width: 50px; height: 72px; border-radius: 6px;
+  width: 46px; height: 66px; border-radius: 6px;
   background: #fff; color: #333;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   font-weight: bold; box-shadow: 1px 2px 4px rgba(0,0,0,.3);
   transition: transform .3s, opacity .3s; position: relative;
 }
-.card .card-rank { font-size: 1.1em; line-height: 1; }
-.card .card-suit { font-size: .9em; line-height: 1; margin-top: 1px; }
+.card .card-rank { font-size: 1em; line-height: 1; }
+.card .card-suit { font-size: .8em; line-height: 1; margin-top: 1px; }
 .card.red { color: #e74c3c; }
 .card.black { color: #1a1a1a; }
 .card.back {
@@ -204,16 +208,16 @@ input[type="text"]:focus { border-color: #f0c040; }
   display: flex; gap: 8px; justify-content: center; margin: 15px 0;
 }
 .my-hand .card {
-  width: 70px; height: 100px; font-size: 1.1em;
+  width: 65px; height: 94px; font-size: 1.1em;
 }
-.my-hand .card .card-rank { font-size: 1.5em; }
-.my-hand .card .card-suit { font-size: 1.2em; }
+.my-hand .card .card-rank { font-size: 1.4em; }
+.my-hand .card .card-suit { font-size: 1.1em; }
 
 /* 操作区 */
 .action-area { text-align: center; margin: 20px 0; }
-.action-area .btn { margin: 0 8px; }
+.action-area .btn { margin: 0 6px; }
 .my-result {
-  text-align: center; font-size: 1.3em; font-weight: bold;
+  text-align: center; font-size: 1.2em; font-weight: bold;
   margin: 15px 0; min-height: 1.5em;
 }
 
@@ -246,10 +250,42 @@ input[type="text"]:focus { border-color: #f0c040; }
 /* 连接状态 */
 .conn-status {
   position: fixed; top: 10px; right: 10px; font-size: .8em;
-  padding: 4px 12px; border-radius: 12px;
+  padding: 4px 12px; border-radius: 12px; z-index: 100;
 }
 .conn-status.connected { background: rgba(46,204,113,.3); }
 .conn-status.disconnected { background: rgba(231,76,60,.3); }
+
+/* ---- 移动端适配 ---- */
+@media (max-width: 768px) {
+  #lobby h1 { font-size: 2em; }
+  .lobby-card { padding: 20px; margin-left: 10px; margin-right: 10px; }
+  #waiting .room-code { font-size: 1.8em; letter-spacing: 4px; padding: 12px 20px; }
+  .game-main { flex-direction: column; }
+  .chat-panel { width: 100%; max-height: 250px; }
+  .chat-messages { min-height: 100px; max-height: 150px; }
+  .players-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .card { width: 40px; height: 58px; }
+  .card .card-rank { font-size: .85em; }
+  .card .card-suit { font-size: .7em; }
+  .my-hand .card { width: 55px; height: 80px; }
+  .my-hand .card .card-rank { font-size: 1.2em; }
+  .my-hand .card .card-suit { font-size: .9em; }
+  .bet-btns .btn { padding: 8px 14px; font-size: .8em; }
+  .bet-amount-input { width: 60px; padding: 6px; font-size: .8em; }
+  .game-header { font-size: .85em; }
+  .game-header .round { font-size: 1em; }
+}
+
+@media (max-width: 480px) {
+  .container { padding: 12px; }
+  #lobby { padding-top: 40px; }
+  #lobby h1 { font-size: 1.6em; }
+  .players-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+  .player-box { padding: 8px; }
+  .player-box .player-name { font-size: .8em; }
+  .card { width: 36px; height: 52px; }
+  .my-hand .card { width: 50px; height: 72px; }
+}
 </style>
 </head>
 <body>
@@ -297,7 +333,7 @@ input[type="text"]:focus { border-color: #f0c040; }
   <div class="lobby-card">
     <h2>加入房间</h2>
     <input type="text" id="joinName" placeholder="你的昵称" maxlength="8">
-    <input type="text" id="joinRoomId" placeholder="房间号" maxlength="4" style="text-transform:uppercase">
+    <input type="text" id="joinRoomId" placeholder="房间号" maxlength="6" style="text-transform:uppercase">
     <br>
     <button class="btn btn-green" onclick="joinRoom()">加入房间</button>
   </div>
@@ -307,7 +343,7 @@ input[type="text"]:focus { border-color: #f0c040; }
 <!-- 等待室 -->
 <div class="container" id="waiting" style="display:none">
   <h2>等待开始</h2>
-  <div class="room-code" id="roomCode" onclick="copyRoomCode()" title="点击复制">----</div>
+  <div class="room-code" id="roomCode" onclick="copyRoomCode()" title="点击复制">------</div>
   <p style="opacity:.6; font-size:.85em">点击房间号复制，发给朋友</p>
   <div id="roomSettings" class="room-settings"></div>
   <div class="player-list" id="playerList"></div>
@@ -348,6 +384,15 @@ let myName = '';
 let roomId = '';
 let gameState = null;
 let adminToken = '';
+let reconnectToken = '';
+let reconnectTimer = null;
+let betCountdown = null;
+let betCountdownValue = 0;
+
+// ---- 自动重连参数 ----
+const RECONNECT_INTERVAL = 2000;
+const MAX_RECONNECT_WAIT = 60000;
+let reconnectStart = 0;
 
 // ---- WebSocket ----
 function connect() {
@@ -356,16 +401,37 @@ function connect() {
   ws.onopen = () => {
     document.getElementById('connStatus').className = 'conn-status connected';
     document.getElementById('connStatus').textContent = '已连接';
+    // 如果有重连信息，尝试自动重连
+    if (myName && roomId && reconnectToken) {
+      send({ action: 'reconnect', name: myName, room_id: roomId, reconnect_token: reconnectToken });
+    }
   };
   ws.onclose = () => {
     document.getElementById('connStatus').className = 'conn-status disconnected';
     document.getElementById('connStatus').textContent = '已断开';
-    setTimeout(connect, 2000);
+    if (myName && roomId && reconnectToken) {
+      reconnectStart = Date.now();
+      scheduleReconnect();
+    } else {
+      setTimeout(connect, RECONNECT_INTERVAL);
+    }
   };
   ws.onmessage = (e) => {
     const msg = JSON.parse(e.data);
     handleMessage(msg);
   };
+}
+
+function scheduleReconnect() {
+  if (Date.now() - reconnectStart > MAX_RECONNECT_WAIT) {
+    showToast('重连超时，请手动重新加入房间');
+    myName = ''; roomId = ''; reconnectToken = '';
+    showScreen('lobby');
+    return;
+  }
+  document.getElementById('connStatus').textContent = '重连中...';
+  clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(connect, RECONNECT_INTERVAL);
 }
 
 function send(data) {
@@ -378,11 +444,22 @@ function handleMessage(msg) {
     case 'room_created':
       myName = msg.name; roomId = msg.room_id;
       adminToken = msg.admin_token || '';
+      reconnectToken = msg.reconnect_token || '';
+      saveSession();
       showScreen('waiting');
       break;
     case 'room_joined':
       myName = msg.name; roomId = msg.room_id;
+      reconnectToken = msg.reconnect_token || '';
+      saveSession();
       showScreen('waiting');
+      if (msg.reconnected) showToast('重连成功！');
+      break;
+    case 'reconnected':
+      myName = msg.name; roomId = msg.room_id;
+      reconnectToken = msg.reconnect_token || '';
+      saveSession();
+      showToast('重连成功！');
       break;
     case 'error':
       showToast(msg.message);
@@ -392,6 +469,24 @@ function handleMessage(msg) {
       renderState();
       break;
   }
+}
+
+// ---- 持久化会话 ----
+function saveSession() {
+  sessionStorage.setItem('niuniu_session', JSON.stringify({
+    name: myName, room: roomId, token: reconnectToken, admin: adminToken
+  }));
+}
+function loadSession() {
+  try {
+    const s = JSON.parse(sessionStorage.getItem('niuniu_session'));
+    if (s && s.name && s.room && s.token) {
+      myName = s.name; roomId = s.room;
+      reconnectToken = s.token; adminToken = s.admin || '';
+      return true;
+    }
+  } catch(e) {}
+  return false;
 }
 
 // ---- 操作 ----
@@ -449,7 +544,6 @@ function renderState() {
   if (s.phase === 'waiting') {
     showScreen('waiting');
     document.getElementById('roomCode').textContent = s.room_id;
-    // 显示房间设置
     const modeNames = { classic: '经典模式', raise: '加注模式', tournament: '锦标赛' };
     document.getElementById('roomSettings').innerHTML =
       `<span class="setting-tag">${modeNames[s.bet_mode] || s.bet_mode}</span>` +
@@ -484,14 +578,21 @@ function renderState() {
     const potInfo = document.getElementById('potInfo');
     potInfo.textContent = s.pot > 0 ? `奖池 ${s.pot}` : '';
 
+    // 下注倒计时
+    if (s.bet_timer && s.bet_timer > 0 && s.phase === 'betting') {
+      startBetCountdown(s.bet_timer);
+    } else {
+      stopBetCountdown();
+    }
+
     const grid = document.getElementById('playersGrid');
     grid.innerHTML = s.players.map(p => {
       const isMe = p.name === myName;
       const isHost = p.name === s.host;
-      const cardHtml = p.hand.map(c => renderCard(c, 50, 72)).join('');
+      const cardHtml = p.hand.map(c => renderCard(c, 46, 66)).join('');
       const resultText = p.result ? `<div class="result-text">${esc(p.result.display)}</div>` : '';
       const chipText = `<div class="chip-display">💰 ${p.chips}</div>`;
-      const betText = p.bet > 0 ? `<div style="font-size:.8em;opacity:.6">已下注 ${p.bet}</div>` : '';
+      const betText = p.bet > 0 ? `<div style="font-size:.75em;opacity:.6">已下注 ${p.bet}</div>` : '';
       return `<div class="player-box${isMe ? ' me' : ''}${p.confirmed ? ' confirmed' : ''}${p.folded ? ' folded' : ''}">
         <div class="player-name">${esc(p.name)}${isHost ? '<span class="crown"> 👑</span>' : ''}</div>
         <div class="hand-cards">${cardHtml}</div>
@@ -508,7 +609,7 @@ function renderState() {
     const actionArea = document.getElementById('actionArea');
 
     if (me && me.hand.length > 0 && me.hand[0].rank !== '?') {
-      myHand.innerHTML = me.hand.map(c => renderCard(c, 70, 100)).join('');
+      myHand.innerHTML = me.hand.map(c => renderCard(c, 65, 94)).join('');
       if (me.result) {
         myResult.textContent = `你的牌型: ${me.result.display}`;
       } else {
@@ -516,7 +617,7 @@ function renderState() {
       }
     } else if (me && me.hand.length > 0) {
       myHand.innerHTML = me.hand.map(() =>
-        `<div class="card back" style="width:70px;height:100px">?</div>`
+        `<div class="card back" style="width:65px;height:94px">?</div>`
       ).join('');
       myResult.textContent = '';
     } else {
@@ -539,6 +640,7 @@ function renderState() {
     } else if (s.phase === 'playing' && me && me.confirmed) {
       actionArea.innerHTML = '<p style="opacity:.6">已亮牌，等待其他玩家...</p>';
     } else if (s.phase === 'finished') {
+      stopBetCountdown();
       if (myName === s.host) {
         actionArea.innerHTML = '<button class="btn btn-gold" onclick="nextRound()">下一轮</button>';
       } else {
@@ -575,6 +677,43 @@ function renderState() {
   }
 }
 
+// ---- 下注倒计时 ----
+function startBetCountdown(seconds) {
+  stopBetCountdown();
+  betCountdownValue = seconds;
+  updateCountdownDisplay();
+  betCountdown = setInterval(() => {
+    betCountdownValue--;
+    updateCountdownDisplay();
+    if (betCountdownValue <= 0) {
+      stopBetCountdown();
+    }
+  }, 1000);
+}
+function stopBetCountdown() {
+  if (betCountdown) { clearInterval(betCountdown); betCountdown = null; }
+  const el = document.getElementById('betCountdown');
+  if (el) el.remove();
+}
+function updateCountdownDisplay() {
+  let el = document.getElementById('betCountdown');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'betCountdown';
+    el.className = 'bet-timer';
+    const actionArea = document.getElementById('actionArea');
+    if (actionArea && actionArea.parentNode) {
+      actionArea.parentNode.insertBefore(el, actionArea);
+    }
+  }
+  el.textContent = betCountdownValue > 0 ? `⏰ ${betCountdownValue}s` : '';
+  if (betCountdownValue <= 5 && betCountdownValue > 0) {
+    el.style.color = '#e74c3c';
+  } else {
+    el.style.color = '#f0c040';
+  }
+}
+
 function renderCard(c, w, h) {
   if (c.rank === '?') {
     return `<div class="card back" style="width:${w}px;height:${h}px">?</div>`;
@@ -607,6 +746,7 @@ document.addEventListener('keydown', e => {
 });
 
 // ---- 启动 ----
+loadSession();  // 尝试恢复会话
 connect();
 </script>
 </body>

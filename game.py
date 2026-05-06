@@ -123,7 +123,7 @@ class GameRoom:
         self.room_id = room_id
         self.host_name = host_name
         self.admin_token = secrets.token_hex(8)  # 管理后台令牌
-        self.players: list[dict] = []  # {"name": str, "hand": list[Card], "confirmed": bool, "result": HandResult, "chips": int, "folded": bool, "bet": int}
+        self.players: list[dict] = []  # {"name": str, "hand": list[Card], "confirmed": bool, "result": HandResult, "chips": int, "folded": bool, "bet": int, "reconnect_token": str}
         self.phase = "waiting"  # waiting -> dealing -> betting -> playing -> finished
         self.round_number = 0
         self.deck: list[Card] = []
@@ -136,20 +136,55 @@ class GameRoom:
         # 下注状态
         self.pot = 0
         self.current_bet = 0  # 当前需要跟注的金额
+        # 断线重连：name -> {"token": str, "data": dict}
+        self._disconnected: dict[str, dict] = {}
+        # 下注计时
+        self.bet_timer = 0  # 下注倒计时(秒)，0表示不限时
 
     def add_player(self, name: str) -> bool:
         if any(p["name"] == name for p in self.players):
             return False
         if len(self.players) >= 20:
             return False
+        reconnect_token = secrets.token_hex(6)
         self.players.append({
             "name": name, "hand": [], "confirmed": False, "result": None,
             "chips": self.initial_chips, "folded": False, "bet": 0, "luck": 0,
+            "reconnect_token": reconnect_token,
         })
         return True
 
-    def remove_player(self, name: str):
+    def remove_player(self, name: str) -> dict | None:
+        """移除玩家，返回断线重连信息（如果游戏进行中）"""
+        if self.phase in ("betting", "playing"):
+            # 游戏中断线，保留重连信息
+            for p in self.players:
+                if p["name"] == name:
+                    self._disconnected[name] = {
+                        "token": p["reconnect_token"],
+                        "data": {k: v for k, v in p.items()},
+                        "expires": None,  # 由 server 层管理超时
+                    }
+                    return self._disconnected[name]
         self.players = [p for p in self.players if p["name"] != name]
+        return None
+
+    def try_reconnect(self, name: str, token: str) -> bool:
+        """尝试断线重连"""
+        info = self._disconnected.get(name)
+        if not info or info["token"] != token:
+            return False
+        # 恢复玩家数据
+        player_data = info["data"]
+        player_data["reconnect_token"] = secrets.token_hex(6)  # 换新 token
+        # 检查是否已在 players 中
+        existing = [p for p in self.players if p["name"] == name]
+        if existing:
+            existing[0].update(player_data)
+        else:
+            self.players.append(player_data)
+        del self._disconnected[name]
+        return True
 
     def can_start(self) -> bool:
         return self.phase in ("waiting", "finished") and len(self.players) >= 2
@@ -197,6 +232,7 @@ class GameRoom:
         elif self.bet_mode == "raise":
             self.current_bet = self.base_bet
             self.phase = "betting"
+            self.bet_timer = 30  # 30秒下注倒计时
         return True
 
     def _apply_luck(self):
@@ -216,13 +252,20 @@ class GameRoom:
                     weakest_idx = min(range(len(p["hand"])), key=lambda i: p["hand"][i].value)
                     best = max(remaining, key=lambda c: c.value)
                     remaining.remove(best)
+                    # 修复：同时从牌堆中移除被替换的旧牌
+                    old_card = p["hand"][weakest_idx]
                     p["hand"][weakest_idx] = best
+                    # 不把旧牌放回牌堆，避免重复
                 else:
                     # 烂牌：把最大的牌换成牌堆里最小的
                     strongest_idx = max(range(len(p["hand"])), key=lambda i: p["hand"][i].value)
                     worst = min(remaining, key=lambda c: c.value)
                     remaining.remove(worst)
+                    old_card = p["hand"][strongest_idx]
                     p["hand"][strongest_idx] = worst
+            # 同步更新牌堆（移除已使用的牌）
+            used_after = {(c.suit, c.rank) for c in p["hand"]}
+            self.deck = [c for c in self.deck if (c.suit, c.rank) not in used_after]
 
     def set_player_luck(self, host_name: str, target_name: str, luck: int) -> bool:
         """房主设置玩家手气：-3(大衰) ~ +3(大旺)"""
@@ -349,6 +392,12 @@ class GameRoom:
         self.phase = "playing"
         return False
 
+    def auto_fold_timeout(self):
+        """下注超时，未下注的玩家自动弃牌"""
+        for p in self.players:
+            if not p["folded"] and not p["confirmed"] and p["bet"] < self.current_bet:
+                p["folded"] = True
+
     def confirm_cards(self, name: str) -> bool:
         for p in self.players:
             if p["name"] == name and not p["confirmed"] and not p["folded"]:
@@ -429,5 +478,6 @@ class GameRoom:
             "bet_mode_name": BET_MODES.get(self.bet_mode, self.bet_mode),
             "base_bet": self.base_bet,
             "initial_chips": self.initial_chips,
+            "bet_timer": self.bet_timer,
             "chat": self.chat[-20:],  # 只发最近 20 条
         }
