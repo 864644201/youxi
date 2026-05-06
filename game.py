@@ -150,7 +150,7 @@ class GameRoom:
         self.players = [p for p in self.players if p["name"] != name]
 
     def can_start(self) -> bool:
-        return self.phase == "waiting" and len(self.players) >= 2
+        return self.phase in ("waiting", "finished") and len(self.players) >= 2
 
     def start_round(self) -> bool:
         if not self.can_start():
