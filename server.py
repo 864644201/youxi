@@ -148,6 +148,18 @@ async def websocket_endpoint(ws: WebSocket):
                 room.add_chat(conn["name"], message)
                 await broadcast_room(conn["room"])
 
+            elif action == "set_luck":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                target = msg.get("target", "")
+                luck = msg.get("luck", 0)
+                room.set_player_luck(conn["name"], target, luck)
+                await broadcast_room(conn["room"])
+
             elif action == "next_round":
                 conn = connections.get(ws_id)
                 if not conn:

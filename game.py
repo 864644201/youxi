@@ -142,7 +142,7 @@ class GameRoom:
             return False
         self.players.append({
             "name": name, "hand": [], "confirmed": False, "result": None,
-            "chips": self.initial_chips, "folded": False, "bet": 0,
+            "chips": self.initial_chips, "folded": False, "bet": 0, "luck": 0,
         })
         return True
 
@@ -170,6 +170,9 @@ class GameRoom:
             if self.bet_mode == "tournament" and p["chips"] <= 0:
                 p["folded"] = True
 
+        # 应用手气调整
+        self._apply_luck()
+
         # 经典模式：自动扣底注
         if self.bet_mode == "classic":
             for p in self.players:
@@ -193,6 +196,42 @@ class GameRoom:
             self.current_bet = self.base_bet
             self.phase = "betting"
         return True
+
+    def _apply_luck(self):
+        """根据每个玩家的 luck 值调整手牌：luck>0 好牌，luck<0 烂牌"""
+        for p in self.players:
+            luck = p.get("luck", 0)
+            if luck == 0 or not p["hand"] or p.get("folded"):
+                continue
+            swaps = min(abs(luck), 3)
+            used = {(c.suit, c.rank) for c in p["hand"]}
+            remaining = [c for c in self.deck if (c.suit, c.rank) not in used]
+            for _ in range(swaps):
+                if not remaining:
+                    break
+                if luck > 0:
+                    # 好牌：把最小的牌换成牌堆里最大的
+                    weakest_idx = min(range(len(p["hand"])), key=lambda i: p["hand"][i].value)
+                    best = max(remaining, key=lambda c: c.value)
+                    remaining.remove(best)
+                    p["hand"][weakest_idx] = best
+                else:
+                    # 烂牌：把最大的牌换成牌堆里最小的
+                    strongest_idx = max(range(len(p["hand"])), key=lambda i: p["hand"][i].value)
+                    worst = min(remaining, key=lambda c: c.value)
+                    remaining.remove(worst)
+                    p["hand"][strongest_idx] = worst
+
+    def set_player_luck(self, host_name: str, target_name: str, luck: int) -> bool:
+        """房主设置玩家手气：-3(大衰) ~ +3(大旺)"""
+        if host_name != self.host_name:
+            return False
+        luck = max(-3, min(3, luck))
+        for p in self.players:
+            if p["name"] == target_name:
+                p["luck"] = luck
+                return True
+        return False
 
     def place_bet(self, name: str, action: str, amount: int = 0) -> dict:
         """加注模式下注: action = call / raise / fold"""
@@ -277,12 +316,15 @@ class GameRoom:
             self.chat = self.chat[-50:]
 
     def get_state(self, viewer: str = None) -> dict:
+        is_host = viewer == self.host_name
         players_info = []
         for p in self.players:
             info = {
                 "name": p["name"], "confirmed": p["confirmed"],
                 "chips": p["chips"], "folded": p["folded"], "bet": p["bet"],
             }
+            if is_host:
+                info["luck"] = p.get("luck", 0)
             if self.phase in ("betting", "playing", "finished") and p["hand"]:
                 if p["folded"]:
                     info["hand"] = [{"suit": "?", "rank": "?", "symbol": "?", "color": "gray"}] * 5
