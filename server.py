@@ -20,7 +20,7 @@ player_rooms: dict[str, set] = {}         # room_id -> {ws_id, ...}
 
 # ---- 安全：从环境变量读取管理员账号 ----
 ADMIN_USERS = {
-    os.environ.get("ADMIN_USER", "admin"): os.environ.get("ADMIN_PASS", "niuniu123")
+    os.environ.get("ADMIN_USER", "admin"): os.environ.get("ADMIN_PASS", "admin")
 }
 # 登录失败计数 {ip: {"count": int, "lock_until": float}}
 _login_attempts: dict[str, dict] = {}
@@ -190,6 +190,25 @@ async def broadcast_admin():
 @app.get("/")
 async def index():
     return FileResponse(Path(__file__).parent / "static" / "index.html")
+
+
+@app.get("/api/rooms")
+async def list_rooms():
+    """列出所有可加入的房间"""
+    result = []
+    for rid, room in rooms.items():
+        if room.phase == "waiting" and len(room.players) < 20:
+            result.append({
+                "room_id": rid,
+                "host": room.host_name,
+                "player_count": len(room.players),
+                "players": [p["name"] for p in room.players],
+                "bet_mode": room.bet_mode_name,
+                "bet_mode_key": room.bet_mode,
+                "initial_chips": room.initial_chips,
+                "base_bet": room.base_bet,
+            })
+    return {"rooms": result}
 
 
 @app.websocket("/ws")
