@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>牛牛 - 在线纸牌游戏</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", sans-serif;
+  background: #0a5c36;
+  background-image: radial-gradient(ellipse at center, #0d7a48 0%, #0a5c36 50%, #073d24 100%);
+  color: #fff;
+  min-height: 100vh;
+}
+.container { max-width: 900px; margin: 0 auto; padding: 20px; }
+.back-link {
+  display: inline-block; margin-bottom: 10px; color: rgba(255,255,255,.5);
+  text-decoration: none; font-size: .9em;
+}
+.back-link:hover { color: #fff; }
+
+#lobby { text-align: center; padding-top: 30px; }
+#lobby h1 { font-size: 3em; margin-bottom: 10px; text-shadow: 2px 2px 8px rgba(0,0,0,.4); }
+#lobby .subtitle { opacity: .7; margin-bottom: 30px; font-size: 1.1em; }
+.lobby-card {
+  background: rgba(0,0,0,.25); border-radius: 16px; padding: 30px;
+  max-width: 400px; margin: 0 auto 20px; backdrop-filter: blur(10px);
+}
+.lobby-card h2 { margin-bottom: 20px; font-size: 1.3em; }
+input[type="text"] {
+  width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,.2);
+  border-radius: 10px; background: rgba(255,255,255,.1); color: #fff;
+  font-size: 1em; outline: none; margin-bottom: 12px; text-align: center;
+}
+input[type="text"]::placeholder { color: rgba(255,255,255,.4); }
+input[type="text"]:focus { border-color: #f0c040; }
+.btn {
+  padding: 12px 32px; border: none; border-radius: 10px; font-size: 1em;
+  cursor: pointer; font-weight: bold; transition: all .2s;
+}
+.btn-gold { background: #f0c040; color: #1a1a1a; }
+.btn-gold:hover { background: #ffd666; transform: translateY(-1px); }
+.btn-green { background: #2ecc71; color: #fff; }
+.btn-green:hover { background: #27ae60; }
+.btn-red { background: #e74c3c; color: #fff; }
+.btn-red:hover { background: #c0392b; }
+.btn-outline { background: transparent; border: 2px solid rgba(255,255,255,.3); color: #fff; }
+.btn-outline:hover { border-color: #fff; }
+.error { color: #ff6b6b; margin-top: 10px; font-size: .9em; }
+
+.settings-group { margin-bottom: 10px; text-align: left; }
+.settings-group label { display: block; font-size: .85em; opacity: .7; margin-bottom: 4px; }
+.settings-group select {
+  width: 100%; padding: 8px 12px; border: 2px solid rgba(255,255,255,.2);
+  border-radius: 8px; background: rgba(255,255,255,.1); color: #fff;
+  font-size: .9em; outline: none;
+}
+.settings-group select option { background: #1a3a2e; color: #fff; }
+.settings-row { display: flex; gap: 12px; }
+.settings-row .settings-group { flex: 1; }
+.room-settings {
+  display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;
+  margin: 10px 0; font-size: .9em;
+}
+.room-settings .setting-tag {
+  background: rgba(240,192,64,.2); padding: 4px 12px; border-radius: 12px;
+}
+
+/* 游戏 */
+.game-main { display: flex; gap: 15px; }
+.game-left { flex: 1; min-width: 0; }
+.chip-display { font-size: .85em; color: #f0c040; margin-top: 2px; }
+.pot-info {
+  background: rgba(240,192,64,.15); padding: 4px 14px; border-radius: 12px;
+  font-size: .9em; color: #f0c040; font-weight: bold;
+}
+.bet-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.bet-btns .btn { font-size: .9em; padding: 10px 20px; }
+.bet-amount-input {
+  width: 80px; padding: 8px; border: 2px solid rgba(255,255,255,.2);
+  border-radius: 8px; background: rgba(255,255,255,.1); color: #fff;
+  font-size: .9em; text-align: center; outline: none;
+}
+.bet-timer {
+  text-align: center; font-size: 1.2em; color: #f0c040;
+  margin-bottom: 8px; font-weight: bold;
+}
+
+/* 聊天 */
+.chat-panel {
+  width: 240px; background: rgba(0,0,0,.3); border-radius: 12px;
+  display: flex; flex-direction: column; max-height: 500px;
+}
+.chat-header { padding: 10px 14px; font-weight: bold; font-size: .9em; border-bottom: 1px solid rgba(255,255,255,.1); }
+.chat-messages {
+  flex: 1; overflow-y: auto; padding: 8px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+  min-height: 200px; max-height: 360px;
+}
+.chat-msg { font-size: .85em; line-height: 1.4; }
+.chat-msg .msg-name { color: #f0c040; font-weight: bold; }
+.chat-msg .msg-time { opacity: .4; font-size: .8em; margin-left: 4px; }
+.chat-input {
+  display: flex; gap: 6px; padding: 8px 12px;
+  border-top: 1px solid rgba(255,255,255,.1);
+}
+.chat-input input {
+  flex: 1; padding: 6px 10px; border: 1px solid rgba(255,255,255,.2);
+  border-radius: 8px; background: rgba(255,255,255,.1); color: #fff;
+  font-size: .85em; outline: none;
+}
+.chat-input .btn { padding: 6px 14px; font-size: .85em; }
+
+.player-box.folded { opacity: .4; }
+.player-box.folded::after {
+  content: "已弃牌"; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); font-size: 1.2em; font-weight: bold; color: #e74c3c;
+}
+.player-box { position: relative; }
+
+#waiting { text-align: center; padding-top: 30px; }
+#waiting .room-code {
+  font-size: 2.5em; font-weight: bold; letter-spacing: 6px;
+  background: rgba(0,0,0,.3); padding: 15px 30px; border-radius: 12px;
+  display: inline-block; margin: 15px 0; cursor: pointer; transition: background .2s;
+}
+#waiting .room-code:hover { background: rgba(0,0,0,.4); }
+.player-list { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px 0; }
+.player-tag { background: rgba(255,255,255,.15); padding: 8px 18px; border-radius: 20px; font-size: .95em; }
+.player-tag.host::after { content: " 👑"; }
+.start-area { margin-top: 20px; }
+.start-area .hint { opacity: .5; font-size: .85em; margin-top: 10px; }
+
+#game { padding-top: 10px; }
+.game-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;
+}
+.game-header .round { font-size: 1.2em; font-weight: bold; }
+.game-header .room-info { opacity: .6; font-size: .9em; }
+
+.players-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px; margin-bottom: 20px;
+}
+.player-box {
+  background: rgba(0,0,0,.3); border-radius: 12px; padding: 12px;
+  text-align: center; border: 2px solid transparent; transition: all .3s;
+}
+.player-box.me { border-color: #f0c040; }
+.player-box.confirmed { border-color: #2ecc71; }
+.player-box .player-name { font-weight: bold; margin-bottom: 8px; font-size: .9em; }
+.player-box .player-name .crown { font-size: .8em; }
+.player-box .hand-cards {
+  display: flex; gap: 3px; justify-content: center; flex-wrap: wrap;
+  margin-bottom: 6px; min-height: 60px; align-items: center;
+}
+.player-box .result-text { font-size: 1em; font-weight: bold; min-height: 1.4em; }
+
+.card {
+  width: 46px; height: 66px; border-radius: 6px; background: #fff; color: #333;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-weight: bold; box-shadow: 1px 2px 4px rgba(0,0,0,.3);
+  transition: transform .3s, opacity .3s;
+}
+.card .card-rank { font-size: 1em; line-height: 1; }
+.card .card-suit { font-size: .8em; line-height: 1; margin-top: 1px; }
+.card.red { color: #e74c3c; }
+.card.black { color: #1a1a1a; }
+.card.back { background: linear-gradient(135deg, #1a3a6e, #2a5aae); color: rgba(255,255,255,.3); font-size: 1.5em; }
+
+.my-hand { display: flex; gap: 8px; justify-content: center; margin: 15px 0; }
+.my-hand .card { width: 65px; height: 94px; font-size: 1.1em; }
+.my-hand .card .card-rank { font-size: 1.4em; }
+.my-hand .card .card-suit { font-size: 1.1em; }
+
+.action-area { text-align: center; margin: 20px 0; }
+.action-area .btn { margin: 0 6px; }
+.my-result { text-align: center; font-size: 1.2em; font-weight: bold; margin: 15px 0; min-height: 1.5em; }
+
+#results {
+  background: rgba(0,0,0,.35); border-radius: 16px; padding: 20px;
+  margin-top: 15px; max-height: 300px; overflow-y: auto;
+}
+#results h3 { margin-bottom: 15px; text-align: center; }
+.rank-row {
+  display: flex; align-items: center; padding: 8px 12px;
+  border-radius: 8px; margin-bottom: 6px;
+}
+.rank-row:nth-child(1) { background: rgba(240,192,64,.2); }
+.rank-row:nth-child(2) { background: rgba(192,192,192,.15); }
+.rank-row:nth-child(3) { background: rgba(205,127,50,.15); }
+.rank-row .rank-num { font-size: 1.4em; width: 40px; text-align: center; }
+.rank-row .rank-name { flex: 1; font-weight: bold; }
+.rank-row .rank-hand { opacity: .8; font-size: .9em; }
+
+.toast {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,.8); color: #fff; padding: 12px 24px;
+  border-radius: 10px; font-size: .95em; z-index: 1000;
+  animation: fadeInUp .3s ease;
+}
+@keyframes fadeInUp { from { opacity: 0; transform: translateX(-50%) translateY(10px); } }
+
+.conn-status {
+  position: fixed; top: 10px; right: 10px; font-size: .8em;
+  padding: 4px 12px; border-radius: 12px; z-index: 100;
+}
+.conn-status.connected { background: rgba(46,204,113,.3); }
+.conn-status.disconnected { background: rgba(231,76,60,.3); }
+
+.room-list-section { max-width: 600px; margin: 0 auto; }
+.room-list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.room-list-header h2 { font-size: 1.2em; }
+.btn-sm { padding: 6px 14px; font-size: .8em; }
+.join-name-bar { margin-bottom: 14px; }
+.join-name-bar input {
+  width: 100%; padding: 12px 16px; border: 2px solid rgba(255,255,255,.2);
+  border-radius: 10px; background: rgba(255,255,255,.1); color: #fff;
+  font-size: 1em; outline: none; text-align: center;
+}
+.join-name-bar input::placeholder { color: rgba(255,255,255,.4); }
+.join-name-bar input:focus { border-color: #2ecc71; }
+.room-list-grid { display: flex; flex-direction: column; gap: 10px; }
+.room-list-card {
+  background: rgba(0,0,0,.25); border-radius: 14px; padding: 16px 18px;
+  cursor: pointer; transition: all .2s; border: 2px solid transparent;
+  backdrop-filter: blur(10px);
+}
+.room-list-card:hover { border-color: rgba(46,204,113,.5); background: rgba(0,0,0,.35); transform: translateY(-1px); }
+.room-list-card .rlc-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.room-list-card .rlc-host { font-weight: bold; font-size: 1em; }
+.room-list-card .rlc-badge { padding: 3px 10px; border-radius: 8px; font-size: .75em; font-weight: bold; }
+.rlc-badge.classic { background: rgba(52,152,219,.2); color: #3498db; }
+.rlc-badge.raise { background: rgba(241,196,15,.2); color: #f1c40f; }
+.rlc-badge.tournament { background: rgba(155,89,182,.2); color: #9b59b6; }
+.room-list-card .rlc-info { font-size: .8em; opacity: .6; }
+.room-list-card .rlc-players { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.room-list-card .rlc-tag { background: rgba(255,255,255,.1); padding: 2px 10px; border-radius: 10px; font-size: .8em; }
+.empty-state { text-align: center; padding: 30px; opacity: .4; font-size: .95em; }
+
+@media (max-width: 768px) {
+  #lobby h1 { font-size: 2em; }
+  .lobby-card { padding: 20px; margin-left: 10px; margin-right: 10px; }
+  .room-list-section { padding: 0 10px; }
+  #waiting .room-code { font-size: 1.8em; letter-spacing: 4px; padding: 12px 20px; }
+  .game-main { flex-direction: column; }
+  .chat-panel { width: 100%; max-height: 250px; }
+  .chat-messages { min-height: 100px; max-height: 150px; }
+  .players-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .card { width: 40px; height: 58px; }
+  .card .card-rank { font-size: .85em; }
+  .card .card-suit { font-size: .7em; }
+  .my-hand .card { width: 55px; height: 80px; }
+  .my-hand .card .card-rank { font-size: 1.2em; }
+  .my-hand .card .card-suit { font-size: .9em; }
+  .bet-btns .btn { padding: 8px 14px; font-size: .8em; }
+  .bet-amount-input { width: 60px; padding: 6px; font-size: .8em; }
+  .game-header { font-size: .85em; }
+  .game-header .round { font-size: 1em; }
+}
+@media (max-width: 480px) {
+  .container { padding: 12px; }
+  #lobby { padding-top: 20px; }
+  #lobby h1 { font-size: 1.6em; }
+  .players-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+  .player-box { padding: 8px; }
+  .player-box .player-name { font-size: .8em; }
+  .card { width: 36px; height: 52px; }
+  .my-hand .card { width: 50px; height: 72px; }
+}
+</style>
+</head>
+<body>
+
+<div class="conn-status disconnected" id="connStatus">未连接</div>
+
+<!-- 大厅 -->
+<div class="container" id="lobby">
+  <a href="/" class="back-link">&larr; 返回游戏大厅</a>
+  <h1>🃏 牛牛</h1>
+  <p class="subtitle">在线纸牌游戏 · 局域网对战</p>
+  <div class="lobby-card">
+    <h2>创建房间</h2>
+    <input type="text" id="createName" placeholder="你的昵称" maxlength="8">
+    <div class="settings-group">
+      <label>游戏模式</label>
+      <select id="betMode">
+        <option value="classic">经典模式 — 固定底注，亮牌比大小</option>
+        <option value="raise">加注模式 — 看牌后可加注/跟注/弃牌</option>
+        <option value="tournament">锦标赛 — 盲注递增，输光淘汰</option>
+      </select>
+    </div>
+    <div class="settings-row">
+      <div class="settings-group">
+        <label>初始筹码</label>
+        <select id="initialChips">
+          <option value="500">500</option>
+          <option value="1000" selected>1000</option>
+          <option value="2000">2000</option>
+          <option value="5000">5000</option>
+        </select>
+      </div>
+      <div class="settings-group">
+        <label>底注</label>
+        <select id="baseBet">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select>
+      </div>
+    </div>
+    <br>
+    <button class="btn btn-gold" onclick="createRoom()">创建房间</button>
+  </div>
+  <div class="room-list-section">
+    <div class="room-list-header">
+      <h2>可加入的房间</h2>
+      <button class="btn btn-outline btn-sm" onclick="fetchRooms()">刷新</button>
+    </div>
+    <div class="join-name-bar">
+      <input type="text" id="joinName" placeholder="输入昵称后点击房间加入" maxlength="8">
+    </div>
+    <div id="roomList" class="room-list-grid"></div>
+    <div id="roomListEmpty" class="empty-state" style="display:none">暂无可加入的房间，快去创建一个吧</div>
+  </div>
+  <div id="lobbyError" class="error"></div>
+</div>
+
+<!-- 等待室 -->
+<div class="container" id="waiting" style="display:none">
+  <h2>等待开始</h2>
+  <div class="room-code" id="roomCode" onclick="copyRoomCode()" title="点击复制">------</div>
+  <p style="opacity:.6; font-size:.85em">点击房间号复制，发给朋友</p>
+  <div id="roomSettings" class="room-settings"></div>
+  <div class="player-list" id="playerList"></div>
+  <div class="start-area" id="startArea">
+    <p class="hint">等待房主开始游戏...</p>
+  </div>
+</div>
+
+<!-- 游戏 -->
+<div class="container" id="game" style="display:none">
+  <div class="game-header">
+    <span class="round" id="roundNum">第 1 轮</span>
+    <span class="pot-info" id="potInfo"></span>
+    <span class="room-info" id="gameRoomInfo"></span>
+  </div>
+  <div class="game-main">
+    <div class="game-left">
+      <div class="players-grid" id="playersGrid"></div>
+      <div class="my-result" id="myResult"></div>
+      <div class="my-hand" id="myHand"></div>
+      <div class="action-area" id="actionArea"></div>
+      <div id="results"></div>
+    </div>
+    <div class="chat-panel" id="chatPanel">
+      <div class="chat-header">房间聊天</div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="发消息..." maxlength="200">
+        <button class="btn btn-gold" onclick="sendChat()">发</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let ws = null;
+let myName = '';
+let roomId = '';
+let gameState = null;
+let reconnectToken = '';
+let reconnectTimer = null;
+let betCountdown = null;
+let betCountdownValue = 0;
+const RECONNECT_INTERVAL = 2000;
+const MAX_RECONNECT_WAIT = 60000;
+let reconnectStart = 0;
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+  ws.onopen = () => {
+    document.getElementById('connStatus').className = 'conn-status connected';
+    document.getElementById('connStatus').textContent = '已连接';
+    if (myName && roomId && reconnectToken) {
+      send({ action: 'reconnect', name: myName, room_id: roomId, reconnect_token: reconnectToken });
+    }
+  };
+  ws.onclose = () => {
+    document.getElementById('connStatus').className = 'conn-status disconnected';
+    document.getElementById('connStatus').textContent = '已断开';
+    if (myName && roomId && reconnectToken) {
+      reconnectStart = Date.now();
+      scheduleReconnect();
+    } else {
+      setTimeout(connect, RECONNECT_INTERVAL);
+    }
+  };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    handleMessage(msg);
+  };
+}
+
+function scheduleReconnect() {
+  if (Date.now() - reconnectStart > MAX_RECONNECT_WAIT) {
+    showToast('重连超时，请手动重新加入房间');
+    myName = ''; roomId = ''; reconnectToken = '';
+    showScreen('lobby');
+    return;
+  }
+  document.getElementById('connStatus').textContent = '重连中...';
+  clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(connect, RECONNECT_INTERVAL);
+}
+
+function send(data) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(data));
+}
+
+function handleMessage(msg) {
+  switch (msg.type) {
+    case 'room_created':
+      myName = msg.name; roomId = msg.room_id;
+      reconnectToken = msg.reconnect_token || '';
+      saveSession();
+      showScreen('waiting');
+      break;
+    case 'room_joined':
+      myName = msg.name; roomId = msg.room_id;
+      reconnectToken = msg.reconnect_token || '';
+      saveSession();
+      showScreen('waiting');
+      if (msg.reconnected) showToast('重连成功！');
+      break;
+    case 'reconnected':
+      myName = msg.name; roomId = msg.room_id;
+      reconnectToken = msg.reconnect_token || '';
+      saveSession();
+      showToast('重连成功！');
+      break;
+    case 'error':
+      showToast(msg.message);
+      break;
+    case 'game_state':
+      gameState = msg.data;
+      renderState();
+      break;
+  }
+}
+
+function saveSession() {
+  sessionStorage.setItem('niuniu_session', JSON.stringify({ name: myName, room: roomId, token: reconnectToken }));
+}
+function loadSession() {
+  try {
+    const s = JSON.parse(sessionStorage.getItem('niuniu_session'));
+    if (s && s.name && s.room && s.token) { myName = s.name; roomId = s.room; reconnectToken = s.token; return true; }
+  } catch(e) {}
+  return false;
+}
+
+function createRoom() {
+  const name = document.getElementById('createName').value.trim();
+  if (!name) { showToast('请输入昵称'); return; }
+  const settings = {
+    bet_mode: document.getElementById('betMode').value,
+    initial_chips: parseInt(document.getElementById('initialChips').value),
+    base_bet: parseInt(document.getElementById('baseBet').value),
+  };
+  send({ action: 'create_room', name, game_type: 'bull_bull', settings });
+}
+
+function joinRoom(rid) {
+  const name = document.getElementById('joinName').value.trim();
+  if (!name) { showToast('请输入昵称'); return; }
+  if (!rid) { showToast('请选择一个房间'); return; }
+  send({ action: 'join_room', name, room_id: rid });
+}
+
+function startGame() { send({ action: 'start_game' }); }
+function confirmCards() { send({ action: 'confirm_cards' }); }
+function nextRound() { send({ action: 'next_round' }); }
+function placeBet(action) {
+  const amountInput = document.getElementById('raiseAmount');
+  const amount = amountInput ? parseInt(amountInput.value) || 0 : 0;
+  send({ action: 'place_bet', bet_action: action, amount });
+}
+function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  send({ action: 'chat', message: msg });
+  input.value = '';
+}
+function copyRoomCode() {
+  navigator.clipboard.writeText(roomId).then(() => showToast('房间号已复制!'));
+}
+
+function showScreen(screen) {
+  document.getElementById('lobby').style.display = screen === 'lobby' ? '' : 'none';
+  document.getElementById('waiting').style.display = screen === 'waiting' ? '' : 'none';
+  document.getElementById('game').style.display = screen === 'game' ? '' : 'none';
+  if (screen === 'lobby') { startRoomRefresh(); } else { stopRoomRefresh(); }
+}
+
+function renderState() {
+  const s = gameState;
+  if (!s) return;
+  if (s.phase === 'waiting') {
+    showScreen('waiting');
+    document.getElementById('roomCode').textContent = s.room_id;
+    const modeNames = { classic: '经典模式', raise: '加注模式', tournament: '锦标赛' };
+    document.getElementById('roomSettings').innerHTML =
+      `<span class="setting-tag">${modeNames[s.bet_mode] || s.bet_mode}</span>` +
+      `<span class="setting-tag">筹码 ${s.initial_chips}</span>` +
+      `<span class="setting-tag">底注 ${s.base_bet}</span>`;
+    const list = document.getElementById('playerList');
+    list.innerHTML = s.players.map(p =>
+      `<div class="player-tag${p.name === s.host ? ' host' : ''}">${esc(p.name)}</div>`
+    ).join('');
+    const area = document.getElementById('startArea');
+    if (myName === s.host) {
+      area.innerHTML = s.players.length >= 2
+        ? `<button class="btn btn-gold" onclick="startGame()">开始游戏 (${s.players.length}人)</button>`
+        : `<p class="hint">至少需要2名玩家才能开始</p>`;
+    } else {
+      area.innerHTML = '<p class="hint">等待房主开始游戏...</p>';
+    }
+  } else {
+    showScreen('game');
+    document.getElementById('roundNum').textContent = `第 ${s.round} 轮`;
+    document.getElementById('gameRoomInfo').textContent = `房间 ${s.room_id} · ${s.bet_mode_name}`;
+    const potInfo = document.getElementById('potInfo');
+    potInfo.textContent = s.pot > 0 ? `奖池 ${s.pot}` : '';
+    if (s.bet_timer && s.bet_timer > 0 && s.phase === 'betting') {
+      startBetCountdown(s.bet_timer);
+    } else {
+      stopBetCountdown();
+    }
+    const grid = document.getElementById('playersGrid');
+    grid.innerHTML = s.players.map(p => {
+      const isMe = p.name === myName;
+      const isHost = p.name === s.host;
+      const cardHtml = p.hand.map(c => renderCard(c, 46, 66)).join('');
+      const resultText = p.result ? `<div class="result-text">${esc(p.result.display)}</div>` : '';
+      const chipText = `<div class="chip-display">💰 ${p.chips}</div>`;
+      const betText = p.bet > 0 ? `<div style="font-size:.75em;opacity:.6">已下注 ${p.bet}</div>` : '';
+      return `<div class="player-box${isMe ? ' me' : ''}${p.confirmed ? ' confirmed' : ''}${p.folded ? ' folded' : ''}">
+        <div class="player-name">${esc(p.name)}${isHost ? '<span class="crown"> 👑</span>' : ''}</div>
+        <div class="hand-cards">${cardHtml}</div>
+        ${resultText}${chipText}${betText}
+      </div>`;
+    }).join('');
+    const me = s.players.find(p => p.name === myName);
+    const myHand = document.getElementById('myHand');
+    const myResult = document.getElementById('myResult');
+    const actionArea = document.getElementById('actionArea');
+    if (me && me.hand.length > 0 && me.hand[0].rank !== '?') {
+      myHand.innerHTML = me.hand.map(c => renderCard(c, 65, 94)).join('');
+      myResult.textContent = me.result ? `你的牌型: ${me.result.display}` : '';
+    } else if (me && me.hand.length > 0) {
+      myHand.innerHTML = me.hand.map(() => `<div class="card back" style="width:65px;height:94px">?</div>`).join('');
+      myResult.textContent = '';
+    } else {
+      myHand.innerHTML = '';
+      myResult.textContent = '';
+    }
+    if (s.phase === 'betting' && me && !me.folded) {
+      const toCall = s.current_bet - me.bet;
+      actionArea.innerHTML = `<div class="bet-btns">
+        ${toCall > 0 ? `<button class="btn btn-green" onclick="placeBet('call')">跟注 ${toCall}</button>` : `<button class="btn btn-green" onclick="placeBet('call')">看牌</button>`}
+        <input type="number" class="bet-amount-input" id="raiseAmount" value="${s.current_bet + s.base_bet}" min="${s.current_bet + s.base_bet}" step="${s.base_bet}">
+        <button class="btn btn-gold" onclick="placeBet('raise')">加注</button>
+        <button class="btn btn-red" onclick="placeBet('fold')">弃牌</button>
+      </div>`;
+    } else if (s.phase === 'playing' && me && !me.confirmed && !me.folded) {
+      actionArea.innerHTML = '<button class="btn btn-gold" onclick="confirmCards()">亮牌</button>';
+    } else if (s.phase === 'playing' && me && me.confirmed) {
+      actionArea.innerHTML = '<p style="opacity:.6">已亮牌，等待其他玩家...</p>';
+    } else if (s.phase === 'finished') {
+      stopBetCountdown();
+      if (myName === s.host) {
+        actionArea.innerHTML = '<button class="btn btn-gold" onclick="nextRound()">下一轮</button>';
+      } else {
+        actionArea.innerHTML = '<p style="opacity:.6">等待房主开始下一轮...</p>';
+      }
+    } else {
+      actionArea.innerHTML = '';
+    }
+    const resultsDiv = document.getElementById('results');
+    if (s.results && s.results.length > 0) {
+      const medals = ['🥇', '🥈', '🥉'];
+      resultsDiv.innerHTML = `<h3>排名</h3>` + s.results.map((r, i) =>
+        `<div class="rank-row">
+          <span class="rank-num">${medals[i] || (i+1)}</span>
+          <span class="rank-name">${esc(r.name)}</span>
+          <span class="rank-hand">${r.result.display}</span>
+          <span style="margin-left:auto;font-size:.85em;color:#f0c040">💰 ${r.chips}</span>
+        </div>`
+      ).join('');
+    } else {
+      resultsDiv.innerHTML = '';
+    }
+    if (s.chat) {
+      const chatDiv = document.getElementById('chatMessages');
+      chatDiv.innerHTML = s.chat.map(m =>
+        `<div class="chat-msg"><span class="msg-name">${esc(m.name)}</span><span class="msg-time">${m.time}</span><br>${esc(m.message)}</div>`
+      ).join('');
+      chatDiv.scrollTop = chatDiv.scrollHeight;
+    }
+  }
+}
+
+function startBetCountdown(seconds) {
+  stopBetCountdown();
+  betCountdownValue = seconds;
+  updateCountdownDisplay();
+  betCountdown = setInterval(() => {
+    betCountdownValue--;
+    updateCountdownDisplay();
+    if (betCountdownValue <= 0) stopBetCountdown();
+  }, 1000);
+}
+function stopBetCountdown() {
+  if (betCountdown) { clearInterval(betCountdown); betCountdown = null; }
+  const el = document.getElementById('betCountdown');
+  if (el) el.remove();
+}
+function updateCountdownDisplay() {
+  let el = document.getElementById('betCountdown');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'betCountdown';
+    el.className = 'bet-timer';
+    const actionArea = document.getElementById('actionArea');
+    if (actionArea && actionArea.parentNode) actionArea.parentNode.insertBefore(el, actionArea);
+  }
+  el.textContent = betCountdownValue > 0 ? `⏰ ${betCountdownValue}s` : '';
+  el.style.color = betCountdownValue <= 5 && betCountdownValue > 0 ? '#e74c3c' : '#f0c040';
+}
+
+function renderCard(c, w, h) {
+  if (c.rank === '?') return `<div class="card back" style="width:${w}px;height:${h}px">?</div>`;
+  return `<div class="card ${c.color}" style="width:${w}px;height:${h}px">
+    <span class="card-rank">${c.rank}</span><span class="card-suit">${c.symbol}</span>
+  </div>`;
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function showToast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
+}
+
+document.getElementById('createName').addEventListener('keydown', e => { if (e.key === 'Enter') createRoom(); });
+document.getElementById('joinName').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('joinName').blur(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.activeElement === document.getElementById('chatInput')) sendChat();
+});
+
+let roomRefreshTimer = null;
+function fetchRooms() {
+  fetch('/api/rooms')
+    .then(r => r.json())
+    .then(data => {
+      const bullRooms = (data.rooms || []).filter(r => r.game_type === 'bull_bull');
+      renderRoomList(bullRooms);
+    })
+    .catch(() => {});
+}
+function renderRoomList(rooms) {
+  const grid = document.getElementById('roomList');
+  const empty = document.getElementById('roomListEmpty');
+  if (rooms.length === 0) { grid.innerHTML = ''; empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  const modeNames = { classic: '经典', raise: '加注', tournament: '锦标赛' };
+  grid.innerHTML = rooms.map(r => `
+    <div class="room-list-card" onclick="joinRoom('${r.room_id}')">
+      <div class="rlc-top">
+        <span class="rlc-host">${esc(r.host)} 的房间</span>
+        <span class="rlc-badge ${r.bet_mode_key}">${modeNames[r.bet_mode_key] || r.bet_mode}</span>
+      </div>
+      <div class="rlc-info">筹码 ${r.initial_chips} · 底注 ${r.base_bet} · ${r.player_count}/${r.max_players}人</div>
+      <div class="rlc-players">${r.players.map(p => `<span class="rlc-tag">${esc(p)}</span>`).join('')}</div>
+    </div>
+  `).join('');
+}
+function startRoomRefresh() { fetchRooms(); clearInterval(roomRefreshTimer); roomRefreshTimer = setInterval(fetchRooms, 3000); }
+function stopRoomRefresh() { clearInterval(roomRefreshTimer); }
+
+loadSession();
+connect();
+startRoomRefresh();
+</script>
+</body>
+</html>

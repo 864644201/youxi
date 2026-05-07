@@ -1,4 +1,4 @@
-"""牛牛游戏 WebSocket 服务器"""
+"""游戏集合 WebSocket 服务器"""
 import json
 import uuid
 import socket
@@ -10,26 +10,26 @@ from datetime import datetime
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from game import GameRoom, BET_MODES
+from games import create_room, GAME_TYPES
+from games.bull_bull import BullBullRoom, BET_MODES, evaluate_hand
 
 app = FastAPI()
 
-rooms: dict[str, GameRoom] = {}           # room_id -> GameRoom
-connections: dict[str, dict] = {}         # ws_id -> {"ws": WebSocket, "room": str, "name": str}
-player_rooms: dict[str, set] = {}         # room_id -> {ws_id, ...}
+rooms: dict[str, object] = {}              # room_id -> BaseGameRoom
+connections: dict[str, dict] = {}          # ws_id -> {"ws": WebSocket, "room": str, "name": str}
+player_rooms: dict[str, set] = {}          # room_id -> {ws_id, ...}
 
 # ---- 安全：从环境变量读取管理员账号 ----
 ADMIN_USERS = {
     os.environ.get("ADMIN_USER", "admin"): os.environ.get("ADMIN_PASS", "admin")
 }
-# 登录失败计数 {ip: {"count": int, "lock_until": float}}
 _login_attempts: dict[str, dict] = {}
 MAX_LOGIN_ATTEMPTS = 5
-LOCKOUT_SECONDS = 300  # 锁定5分钟
+LOCKOUT_SECONDS = 300
 
 # 断线重连超时
-RECONNECT_TIMEOUT = 60  # 秒
-_disconnect_timers: dict[str, dict] = {}  # room_id -> {name: expire_time}
+RECONNECT_TIMEOUT = 60
+_disconnect_timers: dict[str, dict] = {}
 
 
 # ---- SQLite 持久化 ----
@@ -41,20 +41,21 @@ def _init_db():
     c = conn.cursor()
     c.execute("""CREATE TABLE IF NOT EXISTS game_history (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        room_id TEXT, round INTEGER, phase TEXT,
+        room_id TEXT, game_type TEXT, round INTEGER, phase TEXT,
         winner TEXT, pot INTEGER,
-        players TEXT,  -- JSON
+        players TEXT,
         created_at TEXT DEFAULT (datetime('now','localtime'))
     )""")
     c.execute("""CREATE TABLE IF NOT EXISTS admin_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         action TEXT, room_id TEXT, target TEXT,
-        detail TEXT,  -- JSON
+        detail TEXT,
         created_at TEXT DEFAULT (datetime('now','localtime'))
     )""")
     c.execute("""CREATE TABLE IF NOT EXISTS player_stats (
         name TEXT,
         room_id TEXT,
+        game_type TEXT DEFAULT 'bull_bull',
         total_rounds INTEGER DEFAULT 0,
         total_wins INTEGER DEFAULT 0,
         total_chips_change INTEGER DEFAULT 0,
@@ -66,7 +67,6 @@ def _init_db():
 
 
 def _db_execute(query: str, params: tuple = ()):
-    """异步安全的数据库写入"""
     try:
         conn = sqlite3.connect(str(DB_PATH))
         c = conn.cursor()
@@ -97,24 +97,27 @@ def log_admin_action(action: str, room_id: str = "", target: str = "", detail: d
     )
 
 
-def log_game_result(room: GameRoom, winner_name: str):
+def log_game_result(room, winner_name: str):
+    game_type = getattr(room, 'game_type', 'unknown')
     players_data = json.dumps([{
-        "name": p["name"], "chips": p["chips"], "result": p["result"].display if p["result"] else ""
+        "name": p["name"], "chips": p.get("chips", 0),
+        "result": p.get("result").display if p.get("result") else ""
     } for p in room.players], ensure_ascii=False)
     _db_execute(
-        "INSERT INTO game_history (room_id, round, phase, winner, pot, players) VALUES (?, ?, ?, ?, ?, ?)",
-        (room.room_id, room.round_number, room.phase, winner_name, room.pot, players_data)
+        "INSERT INTO game_history (room_id, game_type, round, phase, winner, pot, players) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (room.room_id, game_type, room.round_number, room.phase, winner_name, getattr(room, 'pot', 0), players_data)
     )
-    # 更新玩家统计
+    initial_chips = getattr(room, 'initial_chips', 0)
     for p in room.players:
+        chips = p.get("chips", 0)
         _db_execute(
-            """INSERT INTO player_stats (name, room_id, total_rounds, total_wins, total_chips_change, last_seen)
-               VALUES (?, ?, 1, 0, 0, datetime('now','localtime'))
+            """INSERT INTO player_stats (name, room_id, game_type, total_rounds, total_wins, total_chips_change, last_seen)
+               VALUES (?, ?, ?, 1, 0, 0, datetime('now','localtime'))
                ON CONFLICT(name, room_id) DO UPDATE SET
                total_rounds = total_rounds + 1,
                total_chips_change = total_chips_change + (? - ?),
                last_seen = datetime('now','localtime')""",
-            (p["name"], room.room_id, p["chips"], room.initial_chips)
+            (p["name"], room.room_id, game_type, chips, initial_chips)
         )
         if p["name"] == winner_name:
             _db_execute(
@@ -139,7 +142,6 @@ def _get_local_ip() -> str:
 
 
 async def broadcast_room(room_id: str):
-    """向房间内所有玩家广播游戏状态"""
     if room_id not in rooms or room_id not in player_rooms:
         return
     room = rooms[room_id]
@@ -152,33 +154,38 @@ async def broadcast_room(room_id: str):
             await conn["ws"].send_json({"type": "game_state", "data": state})
         except Exception:
             pass
-    # 同步推送给管理后台
     await broadcast_admin()
 
 
-admin_connections: dict[str, dict] = {}  # admin_ws_id -> {"ws": WebSocket}
+admin_connections: dict[str, dict] = {}
 
 
 def get_rooms_overview() -> list[dict]:
-    """获取所有房间概览"""
     result = []
     for rid, room in rooms.items():
-        result.append({
+        game_type = getattr(room, 'game_type', 'unknown')
+        game_info = GAME_TYPES.get(game_type, {})
+        info = {
             "room_id": rid,
+            "game_type": game_type,
+            "game_name": game_info.get("name", game_type),
             "host": room.host_name,
             "phase": room.phase,
-            "phase_name": {"waiting": "等待中", "betting": "下注中", "playing": "亮牌中", "finished": "已结算"}.get(room.phase, room.phase),
+            "phase_name": {"waiting": "等待中", "betting": "下注中", "playing": "游戏中", "finished": "已结束"}.get(room.phase, room.phase),
             "round": room.round_number,
             "player_count": len(room.players),
             "players": [p["name"] for p in room.players],
-            "bet_mode": BET_MODES.get(room.bet_mode, room.bet_mode),
-            "pot": room.pot,
-        })
+            "pot": getattr(room, 'pot', 0),
+        }
+        # 牛牛特有信息
+        if isinstance(room, BullBullRoom):
+            info["bet_mode"] = BET_MODES.get(room.bet_mode, room.bet_mode)
+            info["bet_mode_key"] = room.bet_mode
+        result.append(info)
     return result
 
 
 async def broadcast_admin():
-    """向所有管理后台推送更新"""
     overview = get_rooms_overview()
     for aid, aconn in list(admin_connections.items()):
         try:
@@ -187,28 +194,58 @@ async def broadcast_admin():
             pass
 
 
+# ---- 页面路由 ----
+
 @app.get("/")
 async def index():
     return FileResponse(Path(__file__).parent / "static" / "index.html")
 
 
+@app.get("/bull-bull")
+async def bull_bull_page():
+    return FileResponse(Path(__file__).parent / "static" / "bull_bull.html")
+
+
+@app.get("/monopoly")
+async def monopoly_page():
+    return FileResponse(Path(__file__).parent / "static" / "monopoly.html")
+
+
+@app.get("/admin")
+async def admin_page():
+    return FileResponse(Path(__file__).parent / "static" / "admin.html")
+
+
 @app.get("/api/rooms")
 async def list_rooms():
-    """列出所有可加入的房间"""
     result = []
     for rid, room in rooms.items():
-        if room.phase == "waiting" and len(room.players) < 20:
-            result.append({
-                "room_id": rid,
-                "host": room.host_name,
-                "player_count": len(room.players),
-                "players": [p["name"] for p in room.players],
-                "bet_mode": BET_MODES.get(room.bet_mode, room.bet_mode),
-                "bet_mode_key": room.bet_mode,
-                "initial_chips": room.initial_chips,
-                "base_bet": room.base_bet,
-            })
+        if room.phase == "waiting":
+            game_type = getattr(room, 'game_type', 'unknown')
+            game_info = GAME_TYPES.get(game_type, {})
+            max_players = game_info.get("max_players", 20)
+            if len(room.players) < max_players:
+                room_info = {
+                    "room_id": rid,
+                    "game_type": game_type,
+                    "game_name": game_info.get("name", game_type),
+                    "host": room.host_name,
+                    "player_count": len(room.players),
+                    "players": [p["name"] for p in room.players],
+                    "max_players": max_players,
+                }
+                if isinstance(room, BullBullRoom):
+                    room_info["bet_mode"] = BET_MODES.get(room.bet_mode, room.bet_mode)
+                    room_info["bet_mode_key"] = room.bet_mode
+                    room_info["initial_chips"] = room.initial_chips
+                    room_info["base_bet"] = room.base_bet
+                result.append(room_info)
     return {"rooms": result}
+
+
+@app.get("/api/game-types")
+async def game_types():
+    return {"types": {k: {"name": v["name"], "min_players": v["min_players"], "max_players": v["max_players"]} for k, v in GAME_TYPES.items()}}
 
 
 @app.websocket("/ws")
@@ -227,19 +264,27 @@ async def websocket_endpoint(ws: WebSocket):
                 if not name:
                     await ws.send_json({"type": "error", "message": "请输入昵称"})
                     continue
+                game_type = msg.get("game_type", "bull_bull")
+                if game_type not in GAME_TYPES:
+                    await ws.send_json({"type": "error", "message": "未知游戏类型"})
+                    continue
                 room_id = _generate_room_id()
                 settings = msg.get("settings", {})
-                room = GameRoom(room_id, name, settings)
-                room.add_player(name)
+                room = create_room(game_type, room_id, name, settings)
+                if not room:
+                    await ws.send_json({"type": "error", "message": "创建房间失败"})
+                    continue
+                game_max = GAME_TYPES[game_type]["max_players"]
+                room.add_player(name, max_players=game_max)
                 rooms[room_id] = room
                 player_rooms[room_id] = {ws_id}
                 connections[ws_id] = {"ws": ws, "room": room_id, "name": name}
-                # 返回 reconnect_token
                 player = next((p for p in room.players if p["name"] == name), None)
                 reconnect_token = player["reconnect_token"] if player else ""
                 await ws.send_json({
                     "type": "room_created", "room_id": room_id, "name": name,
-                    "admin_token": room.admin_token, "reconnect_token": reconnect_token
+                    "game_type": game_type,
+                    "reconnect_token": reconnect_token
                 })
                 await broadcast_room(room_id)
 
@@ -264,12 +309,15 @@ async def websocket_endpoint(ws: WebSocket):
                     new_token = player["reconnect_token"] if player else ""
                     await ws.send_json({
                         "type": "room_joined", "room_id": room_id, "name": name,
+                        "game_type": getattr(room, 'game_type', 'unknown'),
                         "reconnected": True, "reconnect_token": new_token
                     })
                     await broadcast_room(room_id)
                     continue
-                if not room.add_player(name):
-                    await ws.send_json({"type": "error", "message": "昵称重复或房间已满(最多20人)"})
+                game_type = getattr(room, 'game_type', 'bull_bull')
+                game_max = GAME_TYPES.get(game_type, {}).get("max_players", 20)
+                if not room.add_player(name, max_players=game_max):
+                    await ws.send_json({"type": "error", "message": f"昵称重复或房间已满(最多{game_max}人)"})
                     continue
                 if room_id not in player_rooms:
                     player_rooms[room_id] = set()
@@ -279,12 +327,12 @@ async def websocket_endpoint(ws: WebSocket):
                 reconnect_token = player["reconnect_token"] if player else ""
                 await ws.send_json({
                     "type": "room_joined", "room_id": room_id, "name": name,
+                    "game_type": game_type,
                     "reconnect_token": reconnect_token
                 })
                 await broadcast_room(room_id)
 
             elif action == "reconnect":
-                # 专用重连接口
                 name = msg.get("name", "").strip()
                 room_id = msg.get("room_id", "").strip().upper()
                 token = msg.get("reconnect_token", "")
@@ -299,6 +347,7 @@ async def websocket_endpoint(ws: WebSocket):
                         new_token = player["reconnect_token"] if player else ""
                         await ws.send_json({
                             "type": "reconnected", "room_id": room_id, "name": name,
+                            "game_type": getattr(room, 'game_type', 'unknown'),
                             "reconnect_token": new_token
                         })
                         await broadcast_room(room_id)
@@ -319,38 +368,14 @@ async def websocket_endpoint(ws: WebSocket):
                 room.start_round()
                 await broadcast_room(conn["room"])
 
-            elif action == "confirm_cards":
+            elif action == "get_state":
                 conn = connections.get(ws_id)
                 if not conn:
                     continue
                 room = rooms.get(conn["room"])
-                if not room:
-                    continue
-                all_confirmed = room.confirm_cards(conn["name"])
-                if all_confirmed:
-                    winner_name = next((p["name"] for p in room.players if p["result"] and p["result"].type_score == max(
-                        pp["result"].type_score for pp in room.players if pp["result"]
-                    )), "")
-                    log_game_result(room, winner_name)
-                await broadcast_room(conn["room"])
-
-            elif action == "place_bet":
-                conn = connections.get(ws_id)
-                if not conn:
-                    continue
-                room = rooms.get(conn["room"])
-                if not room:
-                    continue
-                bet_action = msg.get("bet_action", "call")
-                amount = msg.get("amount", 0)
-                result = room.place_bet(conn["name"], bet_action, amount)
-                if result.get("ok"):
-                    # 检查下注是否完成
-                    if room.check_betting_done():
-                        room.finish_betting()
-                    await broadcast_room(conn["room"])
-                else:
-                    await ws.send_json({"type": "error", "message": "下注失败"})
+                if room:
+                    state = room.get_state(viewer=conn["name"])
+                    await ws.send_json({"type": "game_state", "data": state})
 
             elif action == "chat":
                 conn = connections.get(ws_id)
@@ -365,18 +390,6 @@ async def websocket_endpoint(ws: WebSocket):
                 room.add_chat(conn["name"], message)
                 await broadcast_room(conn["room"])
 
-            elif action == "set_luck":
-                conn = connections.get(ws_id)
-                if not conn:
-                    continue
-                room = rooms.get(conn["room"])
-                if not room:
-                    continue
-                target = msg.get("target", "")
-                luck = msg.get("luck", 0)
-                room.set_player_luck(conn["name"], target, luck)
-                await broadcast_room(conn["room"])
-
             elif action == "next_round":
                 conn = connections.get(ws_id)
                 if not conn:
@@ -388,14 +401,199 @@ async def websocket_endpoint(ws: WebSocket):
                 room.start_round()
                 await broadcast_room(conn["room"])
 
-            elif action == "get_state":
+            # ---- 牛牛特有操作 ----
+
+            elif action == "confirm_cards":
                 conn = connections.get(ws_id)
                 if not conn:
                     continue
                 room = rooms.get(conn["room"])
-                if room:
-                    state = room.get_state(viewer=conn["name"])
-                    await ws.send_json({"type": "game_state", "data": state})
+                if not room or not isinstance(room, BullBullRoom):
+                    continue
+                all_confirmed = room.confirm_cards(conn["name"])
+                if all_confirmed:
+                    winner_name = next((p["name"] for p in room.players if p.get("result") and p["result"].type_score == max(
+                        pp["result"].type_score for pp in room.players if pp.get("result")
+                    )), "")
+                    log_game_result(room, winner_name)
+                await broadcast_room(conn["room"])
+
+            elif action == "place_bet":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room or not isinstance(room, BullBullRoom):
+                    continue
+                bet_action = msg.get("bet_action", "call")
+                amount = msg.get("amount", 0)
+                result = room.place_bet(conn["name"], bet_action, amount)
+                if result.get("ok"):
+                    if room.check_betting_done():
+                        room.finish_betting()
+                    await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": "下注失败"})
+
+            elif action == "set_luck":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room or not isinstance(room, BullBullRoom):
+                    continue
+                target = msg.get("target", "")
+                luck = msg.get("luck", 0)
+                room.set_player_luck(conn["name"], target, luck)
+                await broadcast_room(conn["room"])
+
+            # ---- 大富翁特有操作 ----
+
+            elif action == "roll_dice":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                result = room.roll_dice(conn["name"])
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": result.get("error", "掷骰子失败")})
+
+            elif action == "buy_property":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                result = room.buy_property(conn["name"])
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": result.get("error", "购买失败")})
+
+            elif action == "skip_buy":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                result = room.skip_buy(conn["name"])
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+
+            elif action == "buy_house":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                pos = msg.get("position", -1)
+                result = room.buy_house(conn["name"], pos)
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": result.get("error", "建房失败")})
+
+            elif action == "sell_house":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                pos = msg.get("position", -1)
+                result = room.sell_house(conn["name"], pos)
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": result.get("error", "卖房失败")})
+
+            elif action == "pay_jail_fine":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                result = room.pay_jail_fine(conn["name"])
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": result.get("error", "付款失败")})
+
+            elif action == "use_jail_card":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                result = room.use_jail_card(conn["name"])
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": result.get("error", "使用出狱卡失败")})
+
+            elif action == "bid_auction":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                amount = msg.get("amount", 0)
+                result = room.bid_auction(conn["name"], amount)
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": result.get("error", "出价失败")})
+
+            elif action == "pass_auction":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                result = room.pass_auction(conn["name"])
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": result.get("error", "操作失败")})
+
+            elif action == "mortgage_property":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                pos = msg.get("position", -1)
+                result = room.mortgage_property(conn["name"], pos)
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": result.get("error", "抵押失败")})
+
+            elif action == "unmortgage_property":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                pos = msg.get("position", -1)
+                result = room.unmortgage_property(conn["name"], pos)
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": result.get("error", "赎回失败")})
 
     except WebSocketDisconnect:
         pass
@@ -427,7 +625,6 @@ def _generate_room_id() -> str:
 
 # ---- 登录安全检查 ----
 def _check_login_blocked(ip: str) -> bool:
-    """检查 IP 是否被锁定"""
     info = _login_attempts.get(ip)
     if not info:
         return False
@@ -440,7 +637,6 @@ def _check_login_blocked(ip: str) -> bool:
 
 
 def _record_login_attempt(ip: str, success: bool):
-    """记录登录尝试"""
     if success:
         _login_attempts.pop(ip, None)
         return
@@ -449,11 +645,6 @@ def _record_login_attempt(ip: str, success: bool):
     if info["count"] >= MAX_LOGIN_ATTEMPTS:
         info["lock_until"] = time.time() + LOCKOUT_SECONDS
     _login_attempts[ip] = info
-
-
-@app.get("/admin")
-async def admin_page():
-    return FileResponse(Path(__file__).parent / "static" / "admin.html")
 
 
 @app.websocket("/ws_admin")
@@ -469,7 +660,6 @@ async def admin_websocket(ws: WebSocket):
             msg = json.loads(raw)
             action = msg.get("action")
 
-            # 登录
             if action == "login":
                 if _check_login_blocked(client_ip):
                     await ws.send_json({"type": "error", "message": f"登录失败次数过多，请等待{LOCKOUT_SECONDS // 60}分钟后再试"})
@@ -490,11 +680,9 @@ async def admin_websocket(ws: WebSocket):
             if not logged_in:
                 continue
 
-            # 获取房间列表
             if action == "get_rooms":
                 await ws.send_json({"type": "rooms_overview", "data": get_rooms_overview()})
 
-            # 获取房间详情
             elif action == "get_room":
                 rid = msg.get("room_id", "").strip().upper()
                 if rid in rooms:
@@ -503,7 +691,6 @@ async def admin_websocket(ws: WebSocket):
                 else:
                     await ws.send_json({"type": "error", "message": "房间不存在"})
 
-            # 获取操作日志
             elif action == "get_logs":
                 limit = min(msg.get("limit", 50), 200)
                 logs = _db_fetch(
@@ -513,38 +700,12 @@ async def admin_websocket(ws: WebSocket):
                 log_list = [dict(r) for r in (logs or [])]
                 await ws.send_json({"type": "admin_logs", "data": log_list})
 
-            # 获取游戏统计
             elif action == "get_stats":
                 stats = _db_fetch("SELECT * FROM player_stats ORDER BY total_rounds DESC LIMIT 50")
                 stat_list = [dict(r) for r in (stats or [])]
                 history = _db_fetch("SELECT * FROM game_history ORDER BY id DESC LIMIT 30")
                 hist_list = [dict(r) for r in (history or [])]
                 await ws.send_json({"type": "game_stats", "data": {"players": stat_list, "history": hist_list}})
-
-            # 管理操作
-            elif action == "admin_set_luck":
-                rid = msg.get("room_id", "").strip().upper()
-                if rid not in rooms:
-                    continue
-                room = rooms[rid]
-                target = msg.get("target", "")
-                luck = msg.get("luck", 0)
-                room.set_player_luck(room.host_name, target, luck)
-                log_admin_action("set_luck", rid, target, {"luck": luck})
-                await broadcast_room(rid)
-
-            elif action == "admin_set_card":
-                rid = msg.get("room_id", "").strip().upper()
-                if rid not in rooms:
-                    continue
-                room = rooms[rid]
-                target = msg.get("target", "")
-                idx = msg.get("card_index", 0)
-                suit = msg.get("suit", "spades")
-                rank = msg.get("rank", "A")
-                room.admin_set_card(target, idx, suit, rank)
-                log_admin_action("set_card", rid, target, {"index": idx, "suit": suit, "rank": rank})
-                await broadcast_room(rid)
 
             elif action == "admin_set_chips":
                 rid = msg.get("room_id", "").strip().upper()
@@ -567,6 +728,34 @@ async def admin_websocket(ws: WebSocket):
                 log_admin_action("kick", rid, target)
                 await broadcast_room(rid)
 
+            elif action == "admin_set_luck":
+                rid = msg.get("room_id", "").strip().upper()
+                if rid not in rooms:
+                    continue
+                room = rooms[rid]
+                if not isinstance(room, BullBullRoom):
+                    continue
+                target = msg.get("target", "")
+                luck = msg.get("luck", 0)
+                room.set_player_luck(room.host_name, target, luck)
+                log_admin_action("set_luck", rid, target, {"luck": luck})
+                await broadcast_room(rid)
+
+            elif action == "admin_set_card":
+                rid = msg.get("room_id", "").strip().upper()
+                if rid not in rooms:
+                    continue
+                room = rooms[rid]
+                if not isinstance(room, BullBullRoom):
+                    continue
+                target = msg.get("target", "")
+                idx = msg.get("card_index", 0)
+                suit = msg.get("suit", "spades")
+                rank = msg.get("rank", "A")
+                room.admin_set_card(target, idx, suit, rank)
+                log_admin_action("set_card", rid, target, {"index": idx, "suit": suit, "rank": rank})
+                await broadcast_room(rid)
+
             elif action == "admin_next_round":
                 rid = msg.get("room_id", "").strip().upper()
                 if rid not in rooms:
@@ -582,11 +771,10 @@ async def admin_websocket(ws: WebSocket):
                 if rid not in rooms:
                     continue
                 room = rooms[rid]
-                if room.phase == "playing":
+                if isinstance(room, BullBullRoom) and room.phase == "playing":
                     for p in room.players:
-                        if not p["confirmed"] and not p["folded"]:
+                        if not p.get("confirmed") and not p.get("folded"):
                             p["confirmed"] = True
-                            from game import evaluate_hand
                             p["result"] = evaluate_hand(p["hand"])
                     room._settle_round()
                     log_admin_action("force_finish", rid)
@@ -600,7 +788,6 @@ async def admin_websocket(ws: WebSocket):
                     player_rooms.pop(rid, None)
                     await ws.send_json({"type": "rooms_overview", "data": get_rooms_overview()})
 
-            # 批量操作：清空所有房间
             elif action == "admin_clear_all":
                 room_ids = list(rooms.keys())
                 for rid in room_ids:
@@ -615,7 +802,7 @@ async def admin_websocket(ws: WebSocket):
         admin_connections.pop(admin_ws_id, None)
 
 
-# 挂载静态文件（在路由之后）
+# 挂载静态文件
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 
@@ -624,7 +811,7 @@ if __name__ == "__main__":
     host = _get_local_ip()
     port = 8000
     print(f"\n{'='*40}")
-    print(f"  牛牛游戏服务器已启动!")
+    print(f"  游戏集合服务器已启动!")
     print(f"  本机访问: http://localhost:{port}")
     print(f"  局域网访问: http://{host}:{port}")
     print(f"  把上面的地址发给朋友!")

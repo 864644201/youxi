@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>大富翁 - 在线桌游</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0f1923;--card:rgba(255,255,255,.06);--card-hover:rgba(255,255,255,.1);
+  --border:rgba(255,255,255,.08);--gold:#f0c040;--green:#2ecc71;--red:#e74c3c;
+  --blue:#3498db;--text:#e8e8e8;--muted:rgba(255,255,255,.45);
+  --board-bg:#1a472a;--board-border:#2d6b3f;--cell-bg:#e8ebe4;
+}
+body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+.container{max-width:1200px;margin:0 auto;padding:12px}
+a.back{color:var(--muted);text-decoration:none;font-size:.85em;display:inline-block;margin-bottom:6px}
+a.back:hover{color:#fff}
+
+/* ── Lobby ── */
+#lobby{text-align:center;padding-top:30px}
+#lobby h1{font-size:2.4em;text-shadow:0 2px 12px rgba(0,0,0,.5)}
+#lobby .sub{color:var(--muted);margin:6px 0 24px}
+.lobby-card{background:var(--card);border-radius:16px;padding:24px;max-width:380px;margin:0 auto 20px;border:1px solid var(--border)}
+.lobby-card h2{margin-bottom:16px;font-size:1.15em}
+input[type="text"]{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.05);color:#fff;font-size:.95em;outline:none;margin-bottom:10px;text-align:center;transition:border .2s}
+input[type="text"]:focus{border-color:var(--blue)}
+input[type="text"]::placeholder{color:rgba(255,255,255,.3)}
+.btn{padding:10px 24px;border:none;border-radius:8px;font-size:.95em;cursor:pointer;font-weight:600;transition:all .15s;display:inline-flex;align-items:center;gap:4px}
+.btn:active{transform:scale(.96)}
+.btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:#2980b9}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#27ae60}
+.btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#c0392b}
+.btn-gold{background:var(--gold);color:#1a1a1a}.btn-gold:hover{background:#ffd666}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:#fff;background:rgba(255,255,255,.05)}
+.btn-sm{padding:6px 12px;font-size:.8em}
+.btn-lg{padding:14px 36px;font-size:1.1em}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+.rooms{max-width:560px;margin:0 auto}
+.rooms-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.rooms-head h2{font-size:1.05em}
+.join-bar{margin-bottom:12px}
+.room-list{display:flex;flex-direction:column;gap:8px}
+.rc{background:var(--card);border-radius:12px;padding:14px 16px;cursor:pointer;border:1px solid transparent;transition:all .2s}
+.rc:hover{border-color:var(--blue);background:var(--card-hover)}
+.rc-top{display:flex;justify-content:space-between;margin-bottom:4px}
+.rc-host{font-weight:600}.rc-badge{font-size:.7em;padding:2px 8px;border-radius:6px;background:rgba(52,152,219,.2);color:var(--blue)}
+.rc-info{font-size:.78em;color:var(--muted)}
+.rc-players{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.rc-tag{background:rgba(255,255,255,.06);padding:1px 8px;border-radius:8px;font-size:.78em}
+.empty{text-align:center;padding:28px;color:var(--muted);font-size:.9em}
+
+/* ── Waiting ── */
+#waiting{text-align:center;padding-top:30px}
+.room-code{font-size:2em;font-weight:700;letter-spacing:4px;background:var(--card);padding:10px 24px;border-radius:10px;display:inline-block;margin:10px 0;cursor:pointer;border:1px solid var(--border);transition:background .2s}
+.room-code:hover{background:var(--card-hover)}
+.p-tags{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:16px 0}
+.p-tag{background:var(--card);padding:7px 16px;border-radius:16px;font-size:.9em}
+.p-tag.host::after{content:" 👑"}
+
+/* ── Game ── */
+#game{padding-top:6px}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:var(--card);border-radius:10px;margin-bottom:8px;flex-wrap:wrap;gap:6px;border:1px solid var(--border)}
+.topbar .turn{font-weight:700;color:var(--gold);font-size:1em}
+.topbar .info{color:var(--muted);font-size:.85em}
+.topbar .dice-sum{font-size:1.2em;font-weight:700}
+
+.layout{display:flex;gap:12px;justify-content:center}
+
+/* ── Board ── */
+.board-wrap{flex-shrink:0}
+.board{
+  display:grid;
+  grid-template-columns:80px repeat(9,56px) 80px;
+  grid-template-rows:80px repeat(9,56px) 80px;
+  gap:1.5px;background:var(--board-bg);border:3px solid var(--board-border);
+  border-radius:8px;position:relative;
+  box-shadow:0 4px 24px rgba(0,0,0,.4);
+}
+
+/* ── Cells ── */
+.c{background:var(--cell-bg);border-radius:3px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.52em;color:#222;text-align:center;padding:1px;overflow:hidden;transition:box-shadow .3s,transform .15s}
+.c.corner{font-size:.6em;font-weight:700;padding:2px}
+.c.corner .c-icon{font-size:1.5em;margin-bottom:1px}
+.c .cbar{width:100%;height:10px;flex-shrink:0}
+.c .cname{font-size:.82em;line-height:1.1;font-weight:600;max-height:2em;overflow:hidden}
+.c .cprice{font-size:.72em;color:#666;margin-top:0}
+.c .chouses{display:flex;gap:1px;position:absolute;top:2px;right:2px}
+.c .chouses .hh{width:6px;height:6px;border-radius:1px;background:var(--green)}
+.c .chouses .hotel{background:var(--red);width:8px}
+.c .cowner{position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 3px 3px}
+.c .cpawn{position:absolute;bottom:1px;left:1px;font-size:.85em;z-index:2;transition:all .4s ease}
+.c .cmort{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;font-size:1.2em;z-index:1}
+.c.hl{box-shadow:inset 0 0 0 2px var(--gold),0 0 8px rgba(240,192,64,.3)}
+
+/* ── Center ── */
+.bcenter{position:absolute;top:81.5px;left:81.5px;right:81.5px;bottom:81.5px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a472a,#143820);border-radius:4px;padding:8px;pointer-events:auto;z-index:5}
+.bcenter .logo{font-size:1.6em;font-weight:900;color:var(--gold);letter-spacing:3px;text-shadow:0 2px 8px rgba(0,0,0,.3)}
+.bcenter .dice-box{font-size:2.4em;margin:8px 0;min-height:1.2em;transition:all .3s}
+.bcenter .dice-box.rolling{animation:diceroll .5s ease}
+.bcenter .prompt{font-size:.82em;text-align:center;color:var(--muted);line-height:1.4;max-width:200px}
+
+@keyframes diceroll{
+  0%{transform:rotateX(0) scale(1)}
+  25%{transform:rotateX(180deg) scale(1.2)}
+  50%{transform:rotateX(360deg) scale(1)}
+  75%{transform:rotateX(540deg) scale(1.1)}
+  100%{transform:rotateX(720deg) scale(1)}
+}
+
+/* ── Side panel ── */
+.side{width:250px;display:flex;flex-direction:column;gap:6px;max-height:700px;overflow-y:auto}
+.pc{background:var(--card);border-radius:10px;padding:10px 12px;border:2px solid transparent;transition:all .2s}
+.pc.cur{border-color:var(--gold);box-shadow:0 0 10px rgba(240,192,64,.15)}
+.pc.me{background:rgba(52,152,219,.08)}
+.pc.dead{opacity:.35;text-decoration:line-through}
+.pc-head{display:flex;justify-content:space-between;align-items:center}
+.pc-name{font-weight:700;font-size:.85em}
+.pc-cash{color:var(--gold);font-weight:700;font-size:.85em}
+.pc-asset{font-size:.7em;color:var(--muted);text-align:right}
+.pc-status{font-size:.72em;color:var(--red);margin-top:2px}
+.pc-props{display:flex;flex-wrap:wrap;gap:2px;margin-top:4px}
+.pc-pr{padding:1px 5px;border-radius:3px;font-size:.65em;font-weight:600;color:#fff;cursor:pointer;transition:opacity .15s}
+.pc-pr:hover{opacity:.8}
+.pc-pr.mort{opacity:.4;text-decoration:line-through}
+
+/* ── Action panel ── */
+.act{background:var(--card);border-radius:12px;padding:16px;margin-top:8px;border:1px solid var(--border)}
+.act h3{font-size:.95em;color:var(--gold);margin-bottom:10px;text-align:center}
+.act-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.act-btns .btn{min-width:80px}
+.prop-info{background:rgba(255,255,255,.03);border-radius:8px;padding:12px;margin:10px 0;text-align:left;font-size:.85em;line-height:1.7;border:1px solid var(--border)}
+.prop-info .pi-name{font-weight:700;font-size:1.05em;margin-bottom:4px}
+.prop-info .pi-price{color:var(--gold);font-weight:700}
+.prop-info .pi-rent{font-size:.85em;color:var(--muted)}
+.prop-info .pi-rent b{color:var(--text)}
+
+/* ── Auction ── */
+.auction-panel{background:linear-gradient(135deg,rgba(240,192,64,.08),rgba(240,192,64,.02));border:1px solid rgba(240,192,64,.2);border-radius:12px;padding:16px;margin-top:8px;text-align:center}
+.auction-panel h3{color:var(--gold);margin-bottom:8px;font-size:1.1em}
+.auction-panel .a-price{font-size:1.8em;font-weight:900;color:var(--gold);margin:8px 0}
+.auction-panel .a-bidder{color:var(--green);font-size:.9em;margin-bottom:8px}
+.auction-input{display:flex;gap:6px;justify-content:center;margin:8px 0;align-items:center}
+.auction-input input{width:100px;padding:8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,.05);color:#fff;text-align:center;font-size:.9em}
+
+/* ── Property detail popup ── */
+.prop-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a2a1a;border:2px solid var(--board-border);border-radius:16px;padding:20px;z-index:100;min-width:280px;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
+.prop-popup .pp-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.prop-popup .pp-color{width:100%;height:12px;border-radius:6px;margin-bottom:8px}
+.prop-popup .pp-name{font-weight:700;font-size:1.1em}
+.prop-popup .pp-rent{font-size:.85em;line-height:1.8;margin:8px 0}
+.prop-popup .pp-rent div{display:flex;justify-content:space-between}
+.prop-popup .pp-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;justify-content:center}
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:99}
+
+/* ── Event log ── */
+.elog{background:var(--card);border-radius:10px;padding:8px 10px;margin-top:8px;border:1px solid var(--border);max-height:160px;overflow-y:auto}
+.elog-title{font-weight:700;font-size:.8em;color:var(--muted);margin-bottom:4px}
+.elog-item{font-size:.75em;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.03);display:flex;gap:4px;line-height:1.3}
+.elog-item .ei-icon{flex-shrink:0;width:18px;text-align:center}
+.elog-item .ei-text{flex:1}
+.elog-item .ei-time{color:var(--muted);font-size:.9em;flex-shrink:0}
+.elog-item.money{color:var(--gold)}
+.elog-item.bankruptcy{color:var(--red)}
+.elog-item.victory{color:var(--gold);font-weight:700}
+.elog-item.auction{color:#e67e22}
+.elog-item.buy{color:var(--green)}
+.elog-item.card{color:var(--blue)}
+
+/* ── Chat ── */
+.chat{background:var(--card);border-radius:10px;border:1px solid var(--border);margin-top:8px;display:flex;flex-direction:column;max-height:180px}
+.chat-h{padding:6px 10px;font-weight:600;font-size:.8em;border-bottom:1px solid var(--border)}
+.chat-msgs{flex:1;overflow-y:auto;padding:4px 8px;display:flex;flex-direction:column;gap:3px;min-height:50px;max-height:100px}
+.cm{font-size:.75em;line-height:1.3}.cm .cmn{color:var(--gold);font-weight:600}.cm .ctm{color:var(--muted);font-size:.9em;margin-left:3px}
+.chat-in{display:flex;gap:4px;padding:4px 8px;border-top:1px solid var(--border)}
+.chat-in input{flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,.04);color:#fff;font-size:.78em;outline:none}
+.chat-in .btn{padding:4px 10px;font-size:.78em}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:10px 20px;border-radius:8px;font-size:.9em;z-index:200;animation:toastin .3s}
+@keyframes toastin{from{opacity:0;transform:translateX(-50%) translateY(8px)}}
+.conn{position:fixed;top:8px;right:8px;font-size:.75em;padding:3px 10px;border-radius:10px;z-index:100}
+.conn.ok{background:rgba(46,204,113,.25)}.conn.fail{background:rgba(231,76,60,.25)}
+
+/* ── Pawn bounce ── */
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.pawn-bounce{animation:bounce .4s ease 2}
+
+/* ── Responsive ── */
+@media(max-width:920px){
+  .board{grid-template-columns:54px repeat(9,40px) 54px;grid-template-rows:54px repeat(9,40px) 54px}
+  .bcenter{top:55.5px;left:55.5px;right:55.5px;bottom:55.5px}
+  .side{width:100%;flex-direction:row;flex-wrap:wrap;max-height:none}
+  .side .pc{flex:1;min-width:130px}
+  .layout{flex-direction:column;align-items:center}
+  .c{font-size:.42em}.c.corner{font-size:.5em}
+}
+@media(max-width:600px){
+  .container{padding:6px}
+  .board{grid-template-columns:42px repeat(9,32px) 42px;grid-template-rows:42px repeat(9,32px) 42px}
+  .bcenter{top:43.5px;left:43.5px;right:43.5px;bottom:43.5px}
+  .c{font-size:.32em;padding:0}.c .cbar{height:5px}.c.corner{font-size:.38em}.c.corner .c-icon{font-size:1em}
+  .bcenter .logo{font-size:1em;letter-spacing:1px}.bcenter .dice-box{font-size:1.6em}
+  .bcenter .prompt{font-size:.65em}
+}
+</style>
+</head>
+<body>
+<div class="conn fail" id="connSt">未连接</div>
+
+<div class="container" id="lobby">
+  <a href="/" class="back">← 返回大厅</a>
+  <h1>🏠 大富翁</h1>
+  <p class="sub">经典桌游 · 局域网对战</p>
+  <div class="lobby-card">
+    <h2>创建房间</h2>
+    <input type="text" id="cName" placeholder="你的昵称" maxlength="8">
+    <br><br>
+    <button class="btn btn-blue" onclick="createRoom()">创建房间</button>
+  </div>
+  <div class="rooms">
+    <div class="rooms-head"><h2>可加入的房间</h2><button class="btn btn-outline btn-sm" onclick="fetchRooms()">刷新</button></div>
+    <div class="join-bar"><input type="text" id="jName" placeholder="输入昵称后点击房间加入" maxlength="8"></div>
+    <div id="rList" class="room-list"></div>
+    <div id="rEmpty" class="empty" style="display:none">暂无可加入的房间</div>
+  </div>
+</div>
+
+<div class="container" id="waiting" style="display:none">
+  <h2>等待开始</h2>
+  <div class="room-code" id="rCode" onclick="copyCode()">------</div>
+  <p style="color:var(--muted);font-size:.8em">点击复制房间号发给朋友</p>
+  <div class="p-tags" id="pList"></div>
+  <div id="startArea"></div>
+</div>
+
+<div class="container" id="game" style="display:none">
+  <div class="topbar" id="topBar"></div>
+  <div class="layout">
+    <div class="board-wrap"><div class="board" id="board"></div></div>
+    <div class="side" id="sidePanel"></div>
+  </div>
+  <div id="actPanel"></div>
+  <div id="elogPanel"></div>
+  <div class="chat">
+    <div class="chat-h">聊天</div>
+    <div class="chat-msgs" id="chatMsgs"></div>
+    <div class="chat-in"><input type="text" id="chatIn" placeholder="发消息..." maxlength="200"><button class="btn btn-gold" onclick="sendChat()">发</button></div>
+  </div>
+</div>
+
+<div id="popupOverlay" style="display:none"></div>
+<div id="propPopup" style="display:none"></div>
+
+<script>
+let ws=null,myName='',roomId='',gs=null,token='',rtimer=null;
+const RI=2000,MW=60000;let rstart=0;
+
+const PC=['#e74c3c','#3498db','#2ecc71','#f0c040','#9b59b6','#e67e22','#1abc9c','#fd79a8'];
+const PE=['🔴','🔵','🟢','🟡','🟣','🟠','🩷','🩵'];
+
+const BS=[
+{index:0,type:'go',name:'起点',emoji:'▶'},
+{index:1,type:'property',name:'地中海大道',group:'brown',price:60,rent:[2,10,30,90,160,250],houseCost:50,mortgage:30},
+{index:2,type:'community_chest',name:'公益金',emoji:'📦'},
+{index:3,type:'property',name:'巴尔的摩大道',group:'brown',price:60,rent:[4,20,60,180,320,450],houseCost:50,mortgage:30},
+{index:4,type:'tax',name:'所得税',amount:200,emoji:'💰'},
+{index:5,type:'railroad',name:'阅读铁路',price:200,emoji:'🚂',mortgage:100},
+{index:6,type:'property',name:'东方大道',group:'lightblue',price:100,rent:[6,30,90,270,400,550],houseCost:50,mortgage:50},
+{index:7,type:'chance',name:'机会',emoji:'❓'},
+{index:8,type:'property',name:'佛蒙特大道',group:'lightblue',price:100,rent:[6,30,90,270,400,550],houseCost:50,mortgage:50},
+{index:9,type:'property',name:'康涅狄格大道',group:'lightblue',price:120,rent:[8,40,100,300,450,600],houseCost:50,mortgage:60},
+{index:10,type:'jail',name:'监狱',emoji:'🔒'},
+{index:11,type:'property',name:'圣查尔斯广场',group:'pink',price:140,rent:[10,50,150,450,625,750],houseCost:100,mortgage:70},
+{index:12,type:'utility',name:'电力公司',price:150,emoji:'💡',mortgage:75},
+{index:13,type:'property',name:'弗吉尼亚大道',group:'pink',price:140,rent:[10,50,150,450,625,750],houseCost:100,mortgage:70},
+{index:14,type:'property',name:'州际大道',group:'pink',price:160,rent:[12,60,180,500,700,900],houseCost:100,mortgage:80},
+{index:15,type:'railroad',name:'宾夕法尼亚铁路',price:200,emoji:'🚂',mortgage:100},
+{index:16,type:'property',name:'圣詹姆斯广场',group:'orange',price:180,rent:[14,70,200,550,750,950],houseCost:100,mortgage:90},
+{index:17,type:'community_chest',name:'公益金',emoji:'📦'},
+{index:18,type:'property',name:'田纳西大道',group:'orange',price:180,rent:[14,70,200,550,750,950],houseCost:100,mortgage:90},
+{index:19,type:'property',name:'纽约大道',group:'orange',price:200,rent:[16,80,220,600,800,1000],houseCost:100,mortgage:100},
+{index:20,type:'free_parking',name:'免费停车',emoji:'🅿️'},
+{index:21,type:'property',name:'肯塔基大道',group:'red',price:220,rent:[18,90,250,700,875,1050],houseCost:150,mortgage:110},
+{index:22,type:'chance',name:'机会',emoji:'❓'},
+{index:23,type:'property',name:'印第安纳大道',group:'red',price:220,rent:[18,90,250,700,875,1050],houseCost:150,mortgage:110},
+{index:24,type:'property',name:'伊利诺伊大道',group:'red',price:240,rent:[20,100,300,750,925,1100],houseCost:150,mortgage:120},
+{index:25,type:'railroad',name:'B&O铁路',price:200,emoji:'🚂',mortgage:100},
+{index:26,type:'property',name:'大西洋大道',group:'yellow',price:260,rent:[22,110,330,800,975,1150],houseCost:150,mortgage:130},
+{index:27,type:'property',name:'文特诺大道',group:'yellow',price:260,rent:[22,110,330,800,975,1150],houseCost:150,mortgage:130},
+{index:28,type:'utility',name:'自来水公司',price:150,emoji:'🚰',mortgage:75},
+{index:29,type:'property',name:'马文花园',group:'yellow',price:280,rent:[24,120,360,850,1025,1200],houseCost:150,mortgage:140},
+{index:30,type:'go_to_jail',name:'进监狱',emoji:'🚔'},
+{index:31,type:'property',name:'太平洋大道',group:'green',price:300,rent:[26,130,390,900,1100,1275],houseCost:200,mortgage:150},
+{index:32,type:'property',name:'北卡罗来纳大道',group:'green',price:300,rent:[26,130,390,900,1100,1275],houseCost:200,mortgage:150},
+{index:33,type:'community_chest',name:'公益金',emoji:'📦'},
+{index:34,type:'property',name:'宾夕法尼亚大道',group:'green',price:320,rent:[28,150,450,1000,1200,1400],houseCost:200,mortgage:160},
+{index:35,type:'railroad',name:'短途铁路',price:200,emoji:'🚂',mortgage:100},
+{index:36,type:'chance',name:'机会',emoji:'❓'},
+{index:37,type:'property',name:'公园广场',group:'darkblue',price:350,rent:[35,175,500,1100,1300,1500],houseCost:200,mortgage:175},
+{index:38,type:'tax',name:'奢侈税',amount:100,emoji:'💎'},
+{index:39,type:'property',name:'海滨大道',group:'darkblue',price:400,rent:[50,200,600,1400,1700,2000],houseCost:200,mortgage:200},
+];
+
+const CG={brown:{c:'#8B4513',n:'棕'},lightblue:{c:'#87CEEB',n:'浅蓝'},pink:{c:'#FF69B4',n:'粉'},orange:{c:'#FFA500',n:'橙'},red:{c:'#FF0000',n:'红'},yellow:{c:'#FFD700',n:'黄'},green:{c:'#228B22',n:'绿'},darkblue:{c:'#00008B',n:'深蓝'}};
+
+function gp(i){if(i===0)return[10,10];if(i<=9)return[10,10-i];if(i===10)return[10,0];if(i<=19)return[10-(i-10),0];if(i===20)return[0,0];if(i<=29)return[0,i-20];if(i===30)return[0,10];if(i<=39)return[i-30,10];return[0,0];}
+
+let animPath=null,animIdx=0;
+
+function buildBoard(){
+  const b=document.getElementById('board');b.innerHTML='';
+  [[10,10,0],[10,0,10],[0,0,20],[0,10,30]].forEach(([r,c,i])=>{
+    const s=BS[i],d=document.createElement('div');d.className='c corner';
+    d.style.gridRow=r+1;d.style.gridColumn=c+1;d.dataset.idx=i;
+    d.innerHTML=`<span class="c-icon">${s.emoji||''}</span><span class="cname">${s.name}</span><div class="cowner" id="co-${i}"></div><div id="pw-${i}"></div>`;
+    b.appendChild(d);
+  });
+  for(let i=1;i<=9;i++)b.appendChild(mc(i));
+  for(let i=11;i<=19;i++)b.appendChild(mc(i));
+  for(let i=21;i<=29;i++)b.appendChild(mc(i));
+  for(let i=31;i<=39;i++)b.appendChild(mc(i));
+  const ctr=document.createElement('div');ctr.className='bcenter';ctr.id='bctr';
+  ctr.innerHTML='<div class="logo">MONOPOLY</div><div class="dice-box" id="diceBox"></div><div class="prompt" id="ctrPrompt"></div>';
+  b.appendChild(ctr);
+}
+
+function mc(i){
+  const s=BS[i],[r,c]=gp(i),d=document.createElement('div');
+  d.className='c '+s.type;d.style.gridRow=r+1;d.style.gridColumn=c+1;d.dataset.idx=i;
+  let h='';
+  if(s.type==='property'){const g=CG[s.group]||{c:'#888'};h+=`<div class="cbar" style="background:${g.c}"></div>`;h+=`<div class="cname">${s.name}</div>`;h+=`<div class="cprice">$${s.price}</div>`;}
+  else if(s.type==='railroad'){h+=`<div class="cname">🚂</div><div class="cname" style="font-size:.7em">${s.name}</div><div class="cprice">$${s.price}</div>`;}
+  else if(s.type==='utility'){h+=`<div class="cname">${s.emoji}</div><div class="cname" style="font-size:.7em">${s.name}</div><div class="cprice">$${s.price}</div>`;}
+  else if(s.type==='chance')h+=`<div class="cname" style="color:#d4a017">❓</div><div class="cname">机会</div>`;
+  else if(s.type==='community_chest')h+=`<div class="cname" style="color:#1a6fa0">📦</div><div class="cname">公益金</div>`;
+  else if(s.type==='tax')h+=`<div class="cname">${s.emoji}</div><div class="cname">${s.name}</div><div class="cprice">$${s.amount}</div>`;
+  else if(s.type==='jail')h+=`<div class="cname">🔒</div><div class="cname">监狱</div>`;
+  else if(s.type==='free_parking')h+=`<div class="cname">🅿️</div><div class="cname">免费停车</div>`;
+  else if(s.type==='go_to_jail')h+=`<div class="cname">🚔</div><div class="cname">进监狱</div>`;
+  h+=`<div class="chouses" id="ch-${i}"></div>`;
+  h+=`<div class="cowner" id="co-${i}"></div>`;
+  h+=`<div id="pw-${i}"></div>`;
+  d.innerHTML=h;
+  d.onclick=()=>showPropDetail(i);
+  d.style.cursor='pointer';
+  return d;
+}
+
+function renderBoard(s){
+  if(!s||!s.board)return;
+  s.board.forEach(b=>{
+    const co=document.getElementById('co-'+b.index),ch=document.getElementById('ch-'+b.index);
+    if(co){if(b.owner){const i=s.players.findIndex(p=>p.name===b.owner);co.style.backgroundColor=PC[i%PC.length];}else co.style.backgroundColor='transparent';}
+    if(ch){if(b.houses>0){let h='';for(let i=0;i<b.houses;i++)h+=i===4?'<div class="hh hotel"></div>':'<div class="hh"></div>';ch.innerHTML=h;}else ch.innerHTML='';}
+    // mortgaged overlay
+    const cell=document.querySelector(`.c[data-idx="${b.index}"]`);
+    if(cell){let mo=cell.querySelector('.cmort');if(b.mortgaged){if(!mo){mo=document.createElement('div');mo.className='cmort';mo.textContent='💤';cell.appendChild(mo);}}else if(mo)mo.remove();}
+  });
+  // pawns
+  for(let i=0;i<40;i++){const pe=document.getElementById('pw-'+i);if(pe)pe.innerHTML='';}
+  if(s.positions)Object.entries(s.positions).forEach(([pos,names])=>{
+    const pe=document.getElementById('pw-'+pos);if(!pe)return;
+    pe.innerHTML=names.map(n=>{const i=s.players.findIndex(p=>p.name===n);return`<span class="cpawn" title="${n}">${PE[i%PE.length]}</span>`;}).join('');
+  });
+  // highlight
+  document.querySelectorAll('.c.hl').forEach(c=>c.classList.remove('hl'));
+  if(s.pending_action&&s.pending_action.space!==undefined){
+    const c=document.querySelector(`.c[data-idx="${s.pending_action.space}"]`);if(c)c.classList.add('hl');
+  }
+}
+
+function animateMove(path,cb){
+  if(!path||!path.length){if(cb)cb();return;}
+  animPath=path;animIdx=0;
+  const pe=id=>document.getElementById('pw-'+id);
+  function step(){
+    if(animIdx>0){const prev=pe(animPath[animIdx-1]);if(prev)prev.innerHTML='';}
+    if(animIdx>=path.length){if(cb)cb();return;}
+    const pos=path[animIdx],el=pe(pos);
+    if(el&&gs){const names=gs.positions&&gs.positions[pos]||[];el.innerHTML=names.map(n=>{const i=gs.players.findIndex(p=>p.name===n);return`<span class="cpawn pawn-bounce">${PE[i%PE.length]}</span>`;}).join('');}
+    animIdx++;setTimeout(step,200);
+  }
+  step();
+}
+
+function renderTopBar(s){
+  const el=document.getElementById('topBar'),cp=s.players.find(p=>p.is_current),mt=cp&&cp.name===myName;
+  let dice='';
+  if(s.dice&&s.dice[0]>0)dice=`<span class="dice-sum">${renderDie(s.dice[0])} ${renderDie(s.dice[1])} = ${s.dice[0]+s.dice[1]}</span>`;
+  el.innerHTML=`<span class="info">第${s.round}轮 · ${s.room_id}</span>${dice}<span class="turn">${cp?(mt?'你的回合!':`等待 ${cp.name}`):'结束'}</span>`;
+}
+function renderDie(n){return['⚀','⚁','⚂','⚃','⚄','⚅'][n-1]||'';}
+
+function renderSide(s){
+  const el=document.getElementById('sidePanel');
+  el.innerHTML=s.players.map(p=>{
+    const i=s.players.indexOf(p),col=PC[i%PC.length],emo=PE[i%PE.length],me=p.name===myName;
+    let st='';if(!p.alive)st='已破产';else if(p.in_jail)st=`在监狱 (${p.jail_turns}/3)`;
+    const props=(p.properties||[]).map(pr=>{
+      const mg=pr.mortgaged?' mort':'';
+      const lbl=pr.houses>=5?'🏨':pr.houses>0?(pr.houses+'🏠'):(CG[pr.group]?(CG[pr.group].n):'');
+      return`<span class="pc-pr${mg}" style="background:${pr.group_color||'#666'}" onclick="showPropDetail(${pr.index})" title="${pr.name}${pr.mortgaged?' (抵押)':''}">${lbl}</span>`;
+    }).join('');
+    return`<div class="pc${p.is_current?' cur':''}${me?' me':''}${!p.alive?' dead':''}">
+      <div class="pc-head"><span class="pc-name">${emo} ${esc(p.name)}${me?' (你)':''}</span><span class="pc-cash">$${p.cash}</span></div>
+      <div class="pc-asset">总资产 $${p.total_asset}</div>
+      ${st?`<div class="pc-status">${st}</div>`:''}
+      <div class="pc-props">${props}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderActions(s){
+  const el=document.getElementById('actPanel'),dice=document.getElementById('diceBox'),prompt=document.getElementById('ctrPrompt');
+  const cp=s.players.find(p=>p.is_current),mt=cp&&cp.name===myName;
+
+  if(s.dice&&s.dice[0]>0)dice.innerHTML=`${renderDie(s.dice[0])} ${renderDie(s.dice[1])}`;
+  else dice.innerHTML='';
+
+  // 拍卖
+  if(s.auction&&!s.auction.ended){renderAuction(s);return;}
+  else{const ap=document.querySelector('.auction-panel');if(ap)ap.remove();}
+
+  if(s.phase==='finished'){
+    const w=s.players.find(p=>p.alive);
+    el.innerHTML=`<div class="act" style="text-align:center"><h3>🏆 ${w?w.name+' 获胜!':'游戏结束'}</h3>${myName===s.host?'<button class="btn btn-blue btn-lg" onclick="startGame()">再来一局</button>':''}</div>`;
+    if(prompt)prompt.textContent=w?`${w.name} 获胜!`:'游戏结束';return;
+  }
+  if(!mt){el.innerHTML='<div class="act"><p style="text-align:center;color:var(--muted);font-size:.85em">等待其他玩家...</p></div>';if(prompt)prompt.textContent=cp?`等待 ${cp.name}`:'';return;}
+
+  // pending buy
+  if(s.pending_action&&s.pending_action.type==='buy_property'&&s.pending_action.player===myName){
+    const sp=BS[s.pending_action.space],g=CG[sp.group];
+    el.innerHTML=`<div class="act">
+      <div class="prop-info">
+        <div class="pi-name">${sp.name}</div>
+        ${g?`<div style="display:inline-block;padding:2px 8px;border-radius:4px;background:${g.c};color:#fff;font-size:.8em;margin:4px 0">${g.n}</div>`:''}
+        <div>价格: <span class="pi-price">$${sp.price}</span></div>
+        ${sp.rent?`<div class="pi-rent">基础租金: <b>$${sp.rent[0]}</b> · 垄断: <b>$${sp.rent[0]*2}</b></div>`:''}
+      </div>
+      <div class="act-btns">
+        <button class="btn btn-green" onclick="buyProperty()">购买 $${sp.price}</button>
+        <button class="btn btn-red" onclick="skipBuy()">拍卖 🔨</button>
+      </div>
+    </div>`;
+    if(prompt)prompt.innerHTML=`${sp.name}<br>$${sp.price} — 购买?`;return;
+  }
+
+  // jail
+  const me=s.players.find(p=>p.name===myName);
+  if(me&&me.in_jail){
+    let jailBtns=`<button class="btn btn-blue" onclick="rollDice()">掷骰子碰运气</button>
+      <button class="btn btn-gold" onclick="payJailFine()">付$50出狱</button>`;
+    if(me.get_out_cards>0)jailBtns+=`<button class="btn btn-green" onclick="useJailCard()">使用出狱卡</button>`;
+    el.innerHTML=`<div class="act"><h3>你在监狱中 (${me.jail_turns}/3)</h3><div class="act-btns">${jailBtns}</div></div>`;
+    if(prompt)prompt.textContent='掷骰子碰运气或付$50出狱';return;
+  }
+
+  // normal - check if roll again (doubles)
+  const rolledDoubles=gs&&gs.dice&&gs.dice[0]>0&&gs.dice[0]===gs.dice[1]&&gs.turn_phase==='roll'&&!gs.pending_action;
+  let rollLabel='掷骰子 🎲';
+  if(rolledDoubles)rollLabel='双骰！再掷一次 🎲';
+
+  let extra='';
+  if(me&&me.properties&&me.properties.length>0){
+    const mons=getMonopolies(me);
+    if(mons.length>0){
+      extra+='<div style="margin-top:10px"><strong style="font-size:.85em;color:var(--gold)">建筑</strong><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+      mons.forEach(g=>{me.properties.filter(p=>p.group===g&&p.houses<5&&!p.mortgaged).forEach(pr=>{
+        extra+=`<button class="btn btn-sm btn-outline" onclick="buyHouse(${pr.index})">${pr.name} ${pr.houses}→${pr.houses+1}</button>`;
+      });});
+      extra+='</div></div>';
+    }
+    // 抵押/赎回
+    const mgProps=me.properties.filter(p=>p.mortgaged);
+    const unmgProps=me.properties.filter(p=>!p.mortgaged&&p.houses===0);
+    if(unmgProps.length>0){
+      extra+='<div style="margin-top:6px"><strong style="font-size:.85em;color:var(--muted)">抵押</strong><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+      unmgProps.forEach(pr=>{extra+=`<button class="btn btn-sm btn-outline" onclick="mortgageProp(${pr.index})">${pr.name} +$${pr.mortgage_value}</button>`;});
+      extra+='</div></div>';
+    }
+    // 卖房
+    const sellableProps=me.properties.filter(p=>p.houses>0&&!p.mortgaged);
+    if(sellableProps.length>0){
+      extra+='<div style="margin-top:6px"><strong style="font-size:.85em;color:var(--muted)">卖房</strong><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+      sellableProps.forEach(pr=>{const refund=Math.floor(pr.house_cost/2);extra+=`<button class="btn btn-sm btn-outline" onclick="sellHouse(${pr.index})">${pr.name} ${pr.houses}→${pr.houses-1} +$${refund}</button>`;});
+      extra+='</div></div>';
+    }
+    if(mgProps.length>0){
+      extra+='<div style="margin-top:6px"><strong style="font-size:.85em;color:var(--muted)">赎回</strong><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+      mgProps.forEach(pr=>{const cost=Math.floor(pr.mortgage_value*1.1);extra+=`<button class="btn btn-sm btn-gold" onclick="unmortgageProp(${pr.index})">${pr.name} -$${cost}</button>`;});
+      extra+='</div></div>';
+    }
+  }
+  el.innerHTML=`<div class="act"><div class="act-btns"><button class="btn btn-blue btn-lg${rolledDoubles?' btn-green':''}" onclick="rollDice()">${rollLabel}</button></div>${extra}</div>`;
+  if(prompt)prompt.textContent='轮到你了!';
+}
+
+function renderAuction(s){
+  const el=document.getElementById('actPanel'),a=s.auction,sp=BS[a.space];
+  const g=CG[sp.group];
+  // remove old
+  const old=document.querySelector('.auction-panel');if(old)old.remove();
+  const div=document.createElement('div');div.className='auction-panel';
+  const canBid=a.players&&a.players.includes(myName);
+  div.innerHTML=`<h3>🔨 拍卖: ${sp.name}</h3>
+    ${g?`<div style="display:inline-block;padding:2px 8px;border-radius:4px;background:${g.c};color:#fff;font-size:.8em">${g.n}</div>`:''}
+    <div class="a-price">$${a.price}</div>
+    <div class="a-bidder">${a.highest_bidder?`最高出价: ${a.highest_bidder}`:'无人出价'}</div>
+    ${canBid?`<div class="auction-input"><input type="number" id="bidAmount" value="${a.price+10}" min="${a.price+1}" step="10"><button class="btn btn-gold" onclick="bidAuction()">出价</button><button class="btn btn-outline" onclick="passAuction()">放弃</button></div>`:`<p style="color:var(--muted);font-size:.8em">${myName} 不能参与此拍卖</p>`}
+  `;
+  el.after(div);
+  // also show in center
+  const prompt=document.getElementById('ctrPrompt');
+  if(prompt)prompt.innerHTML=`🔨 拍卖中<br>${sp.name}<br>$${a.price}`;
+}
+
+function renderEvents(s){
+  if(!s.events)return;
+  const el=document.getElementById('elogPanel');
+  el.innerHTML=`<div class="elog"><div class="elog-title">事件日志</div>${s.events.map(e=>
+    `<div class="elog-item ${e.type||''}"><span class="ei-icon">${e.icon||''}</span><span class="ei-text">${esc(e.text)}</span><span class="ei-time">${e.time||''}</span></div>`
+  ).join('')}</div>`;
+}
+
+function renderChat(s){
+  if(!s.chat)return;
+  const d=document.getElementById('chatMsgs');
+  d.innerHTML=s.chat.map(m=>`<div class="cm"><span class="cmn">${esc(m.name)}</span><span class="ctm">${m.time}</span><br>${esc(m.message)}</div>`).join('');
+  d.scrollTop=d.scrollHeight;
+}
+
+function showPropDetail(idx){
+  const sp=BS[idx];if(!sp||sp.type==='go'||sp.type==='jail'||sp.type==='free_parking'||sp.type==='go_to_jail'||sp.type==='chance'||sp.type==='community_chest'||sp.type==='tax')return;
+  const g=CG[sp.group]||{},gs_owner=gs&&gs.board?gs.board[idx]:null;
+  const owner=gs_owner?gs_owner.owner:null;
+  const houses=gs_owner?gs_owner.houses:0;
+  const mortgaged=gs_owner?gs_owner.mortgaged:false;
+  let rentHtml='';
+  if(sp.rent){rentHtml=`<div class="pi-rent">
+    <div><span>基础租金</span><b>$${sp.rent[0]}</b></div>
+    <div><span>垄断</span><b>$${sp.rent[0]*2}</b></div>
+    <div><span>1栋房</span><b>$${sp.rent[1]}</b></div>
+    <div><span>2栋房</span><b>$${sp.rent[2]}</b></div>
+    <div><span>3栋房</span><b>$${sp.rent[3]}</b></div>
+    <div><span>4栋房</span><b>$${sp.rent[4]}</b></div>
+    <div><span>酒店</span><b>$${sp.rent[5]}</b></div>
+    <div style="margin-top:4px"><span>建房费用</span><b>$${sp.houseCost}</b></div>
+  </div>`;}
+  else if(sp.type==='railroad'){rentHtml=`<div class="pi-rent"><div><span>1条</span><b>$25</b></div><div><span>2条</span><b>$50</b></div><div><span>3条</span><b>$100</b></div><div><span>4条</span><b>$200</b></div></div>`;}
+  else if(sp.type==='utility'){rentHtml=`<div class="pi-rent"><div><span>1个</span><b>骰子×4</b></div><div><span>2个</span><b>骰子×10</b></div></div>`;}
+
+  const overlay=document.getElementById('popupOverlay'),popup=document.getElementById('propPopup');
+  overlay.style.display='';popup.style.display='';
+  overlay.onclick=()=>{overlay.style.display='none';popup.style.display='none';};
+  popup.innerHTML=`<div class="prop-popup">
+    ${g.c?`<div class="pp-color" style="background:${g.c}"></div>`:''}
+    <div class="pp-name">${sp.name}</div>
+    <div style="font-size:.8em;color:var(--muted)">${sp.type==='property'?'地产':sp.type==='railroad'?'铁路':'公用事业'}${g.n?' · '+g.n:''}</div>
+    <div style="font-size:.9em;margin:4px 0">价格: <b style="color:var(--gold)">$${sp.price}</b>${sp.mortgage?` · 抵押: $${sp.mortgage}`:''}</div>
+    ${rentHtml}
+    ${owner?`<div style="margin-top:8px;font-size:.85em">拥有者: <b style="color:${PC[gs.players.findIndex(p=>p.name===owner)%PC.length]}">${owner}</b>${houses>0?' · '+houses+'栋房':''}${mortgaged?' · 已抵押':''}</div>`:'<div style="margin-top:8px;font-size:.85em;color:var(--muted)">无人拥有</div>'}
+  </div>`;
+}
+
+function getMonopolies(me){
+  const g={};(me.properties||[]).forEach(p=>{if(p.group){g[p.group]=(g[p.group]||0)+1;}});
+  return Object.entries(g).filter(([gr,c])=>BS.filter(s=>s.group===gr).length===c).map(([g])=>g);
+}
+
+// ---- WS ----
+function connect(){
+  const p=location.protocol==='https:'?'wss':'ws';
+  ws=new WebSocket(`${p}://${location.host}/ws`);
+  ws.onopen=()=>{document.getElementById('connSt').className='conn ok';document.getElementById('connSt').textContent='已连接';
+    if(myName&&roomId&&token)send({action:'reconnect',name:myName,room_id:roomId,reconnect_token:token});};
+  ws.onclose=()=>{document.getElementById('connSt').className='conn fail';document.getElementById('connSt').textContent='已断开';
+    if(myName&&roomId&&token){rstart=Date.now();schedR();}else setTimeout(connect,RI);};
+  ws.onmessage=e=>handleMsg(JSON.parse(e.data));
+}
+function schedR(){if(Date.now()-rstart>MW){toast('重连超时');myName='';roomId='';token='';showS('lobby');return;}
+  document.getElementById('connSt').textContent='重连中...';clearTimeout(rtimer);rtimer=setTimeout(connect,RI);}
+function send(d){if(ws&&ws.readyState===1)ws.send(JSON.stringify(d));}
+function handleMsg(m){
+  switch(m.type){
+    case'room_created':myName=m.name;roomId=m.room_id;token=m.reconnect_token||'';saveS();showS('waiting');break;
+    case'room_joined':myName=m.name;roomId=m.room_id;token=m.reconnect_token||'';saveS();showS('waiting');if(m.reconnected)toast('重连成功!');break;
+    case'reconnected':myName=m.name;roomId=m.room_id;token=m.reconnect_token||'';saveS();toast('重连成功!');break;
+    case'error':toast(m.message);break;
+    case'game_state':
+      const prevGs=gs;gs=m.data;
+      // 骰子动画：骰子值变化时触发
+      const diceChanged=prevGs&&gs&&gs.dice&&gs.dice[0]>0&&
+        (prevGs.dice[0]!==gs.dice[0]||prevGs.dice[1]!==gs.dice[1]);
+      if(diceChanged){
+        const db=document.getElementById('diceBox');
+        if(db){db.classList.remove('rolling');void db.offsetWidth;db.classList.add('rolling');}
+      }
+      // 棋子移动动画：检测位置变化
+      let movePath=null;
+      if(prevGs&&gs&&gs.positions){
+        const prevPos=prevGs.positions||{},newPos=gs.positions||{};
+        // 找到移动的玩家
+        for(const[name,newP]of Object.entries(newPos)){
+          const oldP=prevPos[name];
+          if(oldP&&oldP.length>0&&newP.length>0){
+            const oldPos=oldP[0],newP2=newP[0];
+            if(oldPos!==newP2){
+              // 构建路径
+              movePath=[];
+              let p=oldPos;
+              while(p!==newP2){p=(p+1)%40;movePath.push(p);}
+              break;
+            }
+          }
+        }
+      }
+      // 渲染 + 动画
+      if(movePath&&movePath.length>0&&movePath.length<=20){
+        // 先渲染除棋子外的所有内容，再动画移动
+        showS('game');buildBoard();renderBoard(gs);renderTopBar(gs);renderSide(gs);renderActions(gs);renderEvents(gs);renderChat(gs);
+        // 移除目标位置的棋子DOM，让动画填充
+        const pe=document.getElementById('pw-'+movePath[movePath.length-1]);
+        if(pe)pe.innerHTML='';
+        animateMove(movePath,()=>renderBoard(gs));
+      }else{
+        renderAll();
+      }
+      break;
+  }
+}
+function saveS(){sessionStorage.setItem('mono_s',JSON.stringify({n:myName,r:roomId,t:token}));}
+function loadS(){try{const s=JSON.parse(sessionStorage.getItem('mono_s'));if(s&&s.n&&s.r&&s.t){myName=s.n;roomId=s.r;token=s.t;return true;}}catch(e){}return false;}
+
+// ---- Actions ----
+function createRoom(){const n=document.getElementById('cName').value.trim();if(!n)return toast('请输入昵称');send({action:'create_room',name:n,game_type:'monopoly'});}
+function joinRoom(rid){const n=document.getElementById('jName').value.trim();if(!n)return toast('请输入昵称');send({action:'join_room',name:n,room_id:rid});}
+function startGame(){send({action:'start_game'});}
+function rollDice(){send({action:'roll_dice'});}
+function buyProperty(){send({action:'buy_property'});}
+function skipBuy(){send({action:'skip_buy'});}
+function buyHouse(p){send({action:'buy_house',position:p});}
+function sellHouse(p){send({action:'sell_house',position:p});}
+function mortgageProp(p){send({action:'mortgage_property',position:p});}
+function unmortgageProp(p){send({action:'unmortgage_property',position:p});}
+function payJailFine(){send({action:'pay_jail_fine'});}
+function useJailCard(){send({action:'use_jail_card'});}
+function bidAuction(){const v=parseInt(document.getElementById('bidAmount').value)||0;send({action:'bid_auction',amount:v});}
+function passAuction(){send({action:'pass_auction'});}
+function sendChat(){const i=document.getElementById('chatIn'),m=i.value.trim();if(!m)return;send({action:'chat',message:m});i.value='';}
+function copyCode(){navigator.clipboard.writeText(roomId).then(()=>toast('已复制!'));}
+
+function showS(s){document.getElementById('lobby').style.display=s==='lobby'?'':'none';document.getElementById('waiting').style.display=s==='waiting'?'':'none';document.getElementById('game').style.display=s==='game'?'':'none';if(s==='lobby')startRR();else stopRR();}
+
+function renderAll(){
+  const s=gs;if(!s)return;
+  if(s.phase==='waiting'){
+    showS('waiting');
+    document.getElementById('rCode').textContent=s.room_id;
+    document.getElementById('pList').innerHTML=s.players.map(p=>`<div class="p-tag${p.name===s.host?' host':''}">${esc(p.name)}</div>`).join('');
+    const a=document.getElementById('startArea');
+    a.innerHTML=myName===s.host?(s.players.length>=2?`<button class="btn btn-blue" onclick="startGame()">开始游戏 (${s.players.length}人)</button>`:'<p style="color:var(--muted);font-size:.85em">至少2人</p>'):'<p style="color:var(--muted);font-size:.85em">等待房主...</p>';
+  }else{
+    showS('game');buildBoard();renderBoard(s);renderTopBar(s);renderSide(s);renderActions(s);renderEvents(s);renderChat(s);
+  }
+}
+
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200);}
+
+document.getElementById('cName').addEventListener('keydown',e=>{if(e.key==='Enter')createRoom();});
+document.getElementById('jName').addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur();});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.activeElement===document.getElementById('chatIn'))sendChat();});
+
+let rrT=null;
+function fetchRooms(){fetch('/api/rooms').then(r=>r.json()).then(d=>{
+  const rooms=(d.rooms||[]).filter(r=>r.game_type==='monopoly');const g=document.getElementById('rList'),em=document.getElementById('rEmpty');
+  if(!rooms.length){g.innerHTML='';em.style.display='';return;}em.style.display='none';
+  g.innerHTML=rooms.map(r=>`<div class="rc" onclick="joinRoom('${r.room_id}')"><div class="rc-top"><span class="rc-host">${esc(r.host)} 的房间</span><span class="rc-badge">大富翁</span></div><div class="rc-info">${r.player_count}/${r.max_players}人</div><div class="rc-players">${r.players.map(p=>`<span class="rc-tag">${esc(p)}</span>`).join('')}</div></div>`).join('');
+}).catch(()=>{});}
+function startRR(){fetchRooms();clearInterval(rrT);rrT=setInterval(fetchRooms,3000);}
+function stopRR(){clearInterval(rrT);}
+
+loadS();connect();startRR();
+</script>
+</body>
+</html>
