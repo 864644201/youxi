@@ -4,135 +4,271 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>游戏管理后台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:#0f0f1a; color:#e0e0e0; min-height:100vh; }
+body {
+  font-family:'Noto Sans SC',-apple-system,"Microsoft YaHei",sans-serif;
+  color:#e8e6e3; min-height:100vh;
+  background:linear-gradient(135deg,#0a0a1a 0%,#1a0a2e 35%,#0a1628 65%,#0d1117 100%);
+  background-size:400% 400%; animation:bgShift 20s ease infinite;
+}
+@keyframes bgShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 
-/* 登录 */
+/* ── Glass ── */
+.glass{background:rgba(255,255,255,.05);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:16px;transition:all .3s}
+
+/* ── 登录 ── */
 .login-screen { display:flex; justify-content:center; align-items:center; min-height:100vh; }
-.login-box { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:20px; padding:48px 40px; width:380px; max-width:90vw; text-align:center; }
-.login-box h1 { font-size:2em; margin-bottom:6px; }
-.login-box .sub { opacity:.4; margin-bottom:32px; font-size:.9em; }
-.login-box input { width:100%; padding:14px 16px; border:2px solid rgba(255,255,255,.1); border-radius:12px; background:rgba(255,255,255,.04); color:#fff; font-size:1em; outline:none; margin-bottom:14px; }
-.login-box input:focus { border-color:#e74c3c; }
-.login-box button { padding:14px; border:none; border-radius:12px; background:#e74c3c; color:#fff; font-size:1em; font-weight:bold; cursor:pointer; width:100%; transition:background .2s; }
-.login-box button:hover { background:#c0392b; }
+.login-box {
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08);
+  border-radius:20px; padding:48px 40px; width:380px; max-width:90vw; text-align:center;
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  box-shadow:0 8px 32px rgba(0,0,0,.3);
+}
+.login-box h1 {
+  font-family:'Orbitron','Noto Sans SC',sans-serif; font-size:2em; font-weight:900;
+  background:linear-gradient(135deg,#e74c3c,#ff6b6b,#e74c3c); background-size:200% 200%;
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  animation:gradText 3s ease infinite; margin-bottom:6px;
+}
+@keyframes gradText{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.login-box .sub { color:rgba(255,255,255,.35); margin-bottom:32px; font-size:.9em; }
+.login-box input {
+  width:100%; padding:14px 16px; border:1px solid rgba(255,255,255,.12);
+  border-radius:12px; background:rgba(255,255,255,.05); color:#fff;
+  font-size:1em; outline:none; margin-bottom:14px; font-family:inherit; transition:all .3s;
+}
+.login-box input:focus { border-color:rgba(231,76,60,.4); box-shadow:0 0 0 3px rgba(231,76,60,.1); }
+.login-box button {
+  padding:14px; border:none; border-radius:12px;
+  background:linear-gradient(135deg,#e74c3c,#c0392b); color:#fff;
+  font-size:1em; font-weight:700; cursor:pointer; width:100%; transition:all .25s;
+  box-shadow:0 4px 15px rgba(231,76,60,.25); font-family:inherit;
+}
+.login-box button:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(231,76,60,.35); }
 .login-error { color:#ff6b6b; font-size:.85em; min-height:1.2em; margin-top:8px; }
 
-/* 主面板 */
+/* ── 主面板 ── */
 .app { display:none; }
 .app.show { display:block; }
-.topbar { display:flex; justify-content:space-between; align-items:center; padding:12px 20px; background:rgba(255,255,255,.03); border-bottom:1px solid rgba(255,255,255,.06); flex-wrap:wrap; gap:8px; }
-.topbar h1 { font-size:1.3em; }
+.topbar {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:12px 20px; background:rgba(255,255,255,.03);
+  border-bottom:1px solid rgba(255,255,255,.06); flex-wrap:wrap; gap:8px;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+}
+.topbar h1 { font-family:'Orbitron','Noto Sans SC',sans-serif; font-size:1.3em; font-weight:700; }
 .topbar .right { display:flex; align-items:center; gap:10px; }
 .topbar .badge { padding:4px 12px; border-radius:10px; font-size:.8em; }
-.conn-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
-.conn-dot.on { background:#2ecc71; }
-.conn-dot.off { background:#e74c3c; }
-.topbar-btn { padding:6px 14px; border:1px solid rgba(255,255,255,.15); border-radius:8px; background:transparent; color:#fff; font-size:.8em; cursor:pointer; }
-.topbar-btn:hover { background:rgba(255,255,255,.08); }
 
-/* 导航 tabs */
-.tabs { display:flex; gap:0; border-bottom:1px solid rgba(255,255,255,.08); padding:0 20px; background:rgba(255,255,255,.02); }
-.tab { padding:10px 20px; cursor:pointer; font-size:.9em; opacity:.5; border-bottom:2px solid transparent; transition:all .2s; }
-.tab:hover { opacity:.7; }
-.tab.active { opacity:1; border-bottom-color:#e74c3c; color:#e74c3c; }
+/* ── Connection dot ── */
+.conn-dot {
+  width:8px; height:8px; border-radius:50%; display:inline-block;
+}
+.conn-dot.on {
+  background:#2ecc71;
+  animation:connPulse 2s ease infinite;
+}
+.conn-dot.off { background:#e74c3c; }
+@keyframes connPulse{0%,100%{box-shadow:0 0 0 0 rgba(46,204,113,.4)}50%{box-shadow:0 0 0 6px rgba(46,204,113,0)}}
+
+.topbar-btn {
+  padding:6px 14px; border:1px solid rgba(255,255,255,.12); border-radius:10px;
+  background:transparent; color:#fff; font-size:.8em; cursor:pointer;
+  transition:all .25s; font-family:inherit;
+}
+.topbar-btn:hover { border-color:rgba(255,255,255,.25); background:rgba(255,255,255,.05); }
+
+/* ── Tabs ── */
+.tabs {
+  display:flex; gap:0; border-bottom:1px solid rgba(255,255,255,.06);
+  padding:0 20px; background:rgba(255,255,255,.02);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+}
+.tab {
+  padding:10px 20px; cursor:pointer; font-size:.9em; color:rgba(255,255,255,.4);
+  border-bottom:2px solid transparent; transition:all .25s;
+}
+.tab:hover { color:rgba(255,255,255,.6); }
+.tab.active { color:#e74c3c; border-bottom-color:#e74c3c; }
 
 .content { padding:16px 20px; max-width:1400px; margin:0 auto; }
 
-/* ---- 房间总览 ---- */
+/* ── 房间总览 ── */
 .tab-panel { display:none; }
 .tab-panel.show { display:block; }
 .stats-bar { display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
-.stat-card { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06); border-radius:12px; padding:14px 18px; min-width:100px; }
-.stat-card .num { font-size:1.6em; font-weight:bold; color:#f0c040; }
-.stat-card .label { font-size:.75em; opacity:.5; margin-top:2px; }
+.stat-card {
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06);
+  border-radius:14px; padding:14px 18px; min-width:100px;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+}
+.stat-card .num {
+  font-family:'Orbitron','Noto Sans SC',sans-serif;
+  font-size:1.6em; font-weight:700; color:#f0c040;
+}
+.stat-card .label { font-size:.75em; color:rgba(255,255,255,.35); margin-top:2px; }
 .rooms-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
-.room-card { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:16px; cursor:pointer; transition:all .2s; position:relative; }
-.room-card:hover { border-color:rgba(240,192,64,.4); background:rgba(255,255,255,.06); transform:translateY(-2px); }
+.room-card {
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06);
+  border-radius:14px; padding:16px; cursor:pointer; transition:all .3s; position:relative;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+}
+.room-card:hover {
+  border-color:rgba(240,192,64,.2); background:rgba(255,255,255,.06);
+  transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.2);
+}
 .room-card .rc-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-.room-card .rc-id { font-size:1.2em; font-weight:bold; letter-spacing:2px; }
-.room-card .rc-phase { padding:3px 10px; border-radius:8px; font-size:.75em; font-weight:bold; }
-.phase-waiting { background:rgba(52,152,219,.2); color:#3498db; }
-.phase-betting { background:rgba(241,196,15,.2); color:#f1c40f; }
-.phase-playing { background:rgba(46,204,113,.2); color:#2ecc71; }
-.phase-finished { background:rgba(155,89,182,.2); color:#9b59b6; }
-.room-card .rc-info { font-size:.8em; opacity:.6; line-height:1.5; }
+.room-card .rc-id {
+  font-family:'Orbitron',monospace; font-size:1.1em; font-weight:700; letter-spacing:2px;
+}
+.room-card .rc-phase { padding:3px 10px; border-radius:8px; font-size:.75em; font-weight:700; }
+.phase-waiting { background:rgba(52,152,219,.12); color:#4fc3f7; }
+.phase-betting { background:rgba(241,196,15,.12); color:#f1c40f; }
+.phase-playing { background:rgba(46,204,113,.12); color:#2ecc71; }
+.phase-finished { background:rgba(155,89,182,.12); color:#ce93d8; }
+.room-card .rc-info { font-size:.8em; color:rgba(255,255,255,.4); line-height:1.5; }
 .room-card .rc-players { display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; }
-.room-card .rc-player-tag { background:rgba(255,255,255,.08); padding:2px 8px; border-radius:10px; font-size:.75em; }
+.room-card .rc-player-tag {
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.06);
+  padding:2px 8px; border-radius:10px; font-size:.75em;
+}
 .room-card .rc-actions { position:absolute; top:12px; right:12px; }
-.room-card .del-btn { background:none; border:none; color:rgba(255,255,255,.2); cursor:pointer; font-size:1.1em; padding:4px; }
+.room-card .del-btn {
+  background:none; border:none; color:rgba(255,255,255,.2); cursor:pointer;
+  font-size:1.1em; padding:4px; transition:color .2s;
+}
 .room-card .del-btn:hover { color:#e74c3c; }
-.empty-state { text-align:center; padding:40px 20px; opacity:.4; font-size:1em; }
+.empty-state { text-align:center; padding:40px 20px; color:rgba(255,255,255,.25); font-size:1em; }
 .batch-bar { margin-bottom:12px; display:flex; gap:8px; }
 
-/* ---- 房间详情 ---- */
-.detail-back { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border:1px solid rgba(255,255,255,.1); border-radius:10px; background:transparent; color:#fff; font-size:.9em; cursor:pointer; margin-bottom:12px; }
-.detail-back:hover { background:rgba(255,255,255,.06); }
+/* ── 房间详情 ── */
+.detail-back {
+  display:inline-flex; align-items:center; gap:6px; padding:8px 16px;
+  border:1px solid rgba(255,255,255,.1); border-radius:10px;
+  background:transparent; color:#fff; font-size:.9em; cursor:pointer;
+  margin-bottom:12px; transition:all .25s; font-family:inherit;
+}
+.detail-back:hover { background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.2); }
 .detail-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
 .detail-header h2 { font-size:1.3em; }
 .detail-header .actions { display:flex; gap:8px; }
 
-/* 玩家卡片 */
+/* ── 玩家卡片 ── */
 .players-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; }
-.p-card { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:14px; }
-.p-card.folded { opacity:.45; }
+.p-card {
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.06);
+  border-radius:14px; padding:14px;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  transition:all .3s;
+}
+.p-card.folded { opacity:.35; }
 .p-card .p-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-.p-card .p-name { font-weight:bold; font-size:1em; }
-.p-card .p-tag { font-size:.7em; opacity:.5; margin-left:6px; }
-.p-card .p-chips { color:#f0c040; font-weight:bold; font-size:.9em; }
-.p-card .p-result { font-weight:bold; color:#2ecc71; margin:4px 0; font-size:.9em; }
+.p-card .p-name { font-weight:700; font-size:1em; }
+.p-card .p-tag { font-size:.7em; color:rgba(255,255,255,.4); margin-left:6px; }
+.p-card .p-chips { color:#f0c040; font-weight:700; font-size:.9em; }
+.p-card .p-result { font-weight:700; color:#2ecc71; margin:4px 0; font-size:.9em; }
 .cards-row { display:flex; gap:4px; margin-bottom:8px; flex-wrap:wrap; }
-.ec { width:46px; height:66px; border-radius:6px; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; font-weight:bold; box-shadow:0 2px 6px rgba(0,0,0,.3); transition:transform .15s; border:2px solid transparent; position:relative; }
-.ec:hover { transform:translateY(-3px); border-color:#f0c040; }
+.ec {
+  width:46px; height:66px; border-radius:8px; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-weight:700; box-shadow:0 2px 8px rgba(0,0,0,.3);
+  transition:transform .15s, border-color .15s; border:2px solid transparent; position:relative;
+}
+.ec:hover { transform:translateY(-3px); border-color:rgba(240,192,64,.4); }
 .ec .rk { font-size:.95em; line-height:1; }
 .ec .st { font-size:.75em; line-height:1; margin-top:1px; }
 .ec.blk { background:#fff; color:#1a1a1a; }
 .ec.red { background:#fff; color:#e74c3c; }
 .p-controls { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
 .cg { display:flex; align-items:center; gap:3px; }
-.cg label { font-size:.7em; opacity:.4; }
-.lb { width:24px; height:24px; border-radius:50%; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.05); color:#fff; cursor:pointer; font-size:.6em; display:flex; align-items:center; justify-content:center; transition:all .12s; }
-.lb:hover { background:rgba(255,255,255,.12); }
-.lb.og { background:rgba(46,204,113,.35); border-color:#2ecc71; }
-.lb.ob { background:rgba(231,76,60,.35); border-color:#e74c3c; }
-.ci { width:64px; padding:4px 6px; border:1px solid rgba(255,255,255,.12); border-radius:6px; background:rgba(255,255,255,.05); color:#fff; font-size:.75em; text-align:center; outline:none; }
-.sb { padding:4px 10px; border:1px solid rgba(255,255,255,.12); border-radius:6px; background:rgba(255,255,255,.05); color:#fff; font-size:.7em; cursor:pointer; transition:all .12s; }
-.sb:hover { background:rgba(255,255,255,.12); }
-.sb.dan { border-color:rgba(231,76,60,.3); color:#e74c3c; }
-.sb.dan:hover { background:rgba(231,76,60,.15); }
-.sb.pri { border-color:rgba(240,192,64,.3); color:#f0c040; }
-.sb.pri:hover { background:rgba(240,192,64,.12); }
+.cg label { font-size:.7em; color:rgba(255,255,255,.35); }
 
-/* 换牌弹窗 */
-.overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:1000; display:flex; justify-content:center; align-items:center; }
-.picker { background:#16162a; border:1px solid rgba(255,255,255,.12); border-radius:16px; padding:20px; width:420px; max-width:95vw; max-height:80vh; overflow-y:auto; }
+/* ── Small buttons ── */
+.lb {
+  width:24px; height:24px; border-radius:50%;
+  border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04);
+  color:#fff; cursor:pointer; font-size:.6em;
+  display:flex; align-items:center; justify-content:center; transition:all .15s;
+}
+.lb:hover { background:rgba(255,255,255,.1); }
+.lb.og { background:rgba(46,204,113,.2); border-color:rgba(46,204,113,.4); color:#2ecc71; }
+.lb.ob { background:rgba(231,76,60,.2); border-color:rgba(231,76,60,.4); color:#e74c3c; }
+.ci {
+  width:64px; padding:4px 6px; border:1px solid rgba(255,255,255,.1);
+  border-radius:8px; background:rgba(255,255,255,.04); color:#fff;
+  font-size:.75em; text-align:center; outline:none; font-family:inherit;
+}
+.ci:focus { border-color:rgba(240,192,64,.3); }
+.sb {
+  padding:4px 10px; border:1px solid rgba(255,255,255,.1); border-radius:8px;
+  background:rgba(255,255,255,.04); color:#fff; font-size:.7em; cursor:pointer;
+  transition:all .15s; font-family:inherit;
+}
+.sb:hover { background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.2); }
+.sb.dan { border-color:rgba(231,76,60,.2); color:#e74c3c; }
+.sb.dan:hover { background:rgba(231,76,60,.1); border-color:rgba(231,76,60,.3); }
+.sb.pri {
+  border-color:rgba(240,192,64,.2); color:#f0c040;
+  background:rgba(240,192,64,.05);
+}
+.sb.pri:hover { background:rgba(240,192,64,.1); border-color:rgba(240,192,64,.3); }
+
+/* ── 换牌弹窗 ── */
+.overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:1000;
+  display:flex; justify-content:center; align-items:center;
+  backdrop-filter:blur(4px);
+}
+.picker {
+  background:rgba(15,15,30,.95); border:1px solid rgba(255,255,255,.1);
+  border-radius:18px; padding:20px; width:420px; max-width:95vw; max-height:80vh; overflow-y:auto;
+  backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  box-shadow:0 16px 48px rgba(0,0,0,.4);
+}
 .picker h3 { margin-bottom:12px; font-size:1em; }
-.picker .cls { float:right; background:none; border:none; color:#fff; font-size:1.2em; cursor:pointer; opacity:.4; }
-.picker .cls:hover { opacity:1; }
+.picker .cls {
+  float:right; background:none; border:none; color:#fff; font-size:1.2em;
+  cursor:pointer; color:rgba(255,255,255,.3); transition:color .2s;
+}
+.picker .cls:hover { color:#fff; }
 .pg { display:grid; grid-template-columns:repeat(13,1fr); gap:3px; }
-.pc { width:26px; height:38px; border-radius:4px; cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:.5em; font-weight:bold; transition:transform .1s; box-shadow:1px 1px 3px rgba(0,0,0,.3); }
+.pc {
+  width:26px; height:38px; border-radius:5px; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-size:.5em; font-weight:700; transition:transform .1s;
+  box-shadow:0 1px 4px rgba(0,0,0,.3);
+}
 .pc:hover { transform:scale(1.2); z-index:1; }
-.pc.used { opacity:.15; pointer-events:none; }
+.pc.used { opacity:.12; pointer-events:none; }
 .pc.blk { background:#fff; color:#1a1a1a; }
 .pc.red { background:#fff; color:#e74c3c; }
 
-/* ---- 操作日志 ---- */
+/* ── 表格 ── */
 .log-table { width:100%; border-collapse:collapse; font-size:.8em; }
-.log-table th { text-align:left; padding:8px 10px; border-bottom:1px solid rgba(255,255,255,.1); opacity:.5; font-weight:normal; }
-.log-table td { padding:6px 10px; border-bottom:1px solid rgba(255,255,255,.04); }
-.log-table tr:hover td { background:rgba(255,255,255,.03); }
+.log-table th {
+  text-align:left; padding:8px 10px; border-bottom:1px solid rgba(255,255,255,.06);
+  color:rgba(255,255,255,.4); font-weight:500;
+}
+.log-table td { padding:6px 10px; border-bottom:1px solid rgba(255,255,255,.03); }
+.log-table tr:hover td { background:rgba(255,255,255,.02); }
 
-/* ---- 统计面板 ---- */
-.stats-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px; }
 .stat-table { width:100%; border-collapse:collapse; font-size:.8em; }
-.stat-table th { text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.1); opacity:.5; }
-.stat-table td { padding:5px 8px; border-bottom:1px solid rgba(255,255,255,.04); }
+.stat-table th {
+  text-align:left; padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.06);
+  color:rgba(255,255,255,.4); font-weight:500;
+}
+.stat-table td { padding:5px 8px; border-bottom:1px solid rgba(255,255,255,.03); }
 .stat-table .positive { color:#2ecc71; }
 .stat-table .negative { color:#e74c3c; }
-.section-title { font-size:1em; font-weight:bold; margin:16px 0 10px; opacity:.8; }
+.section-title { font-size:1em; font-weight:700; margin:16px 0 10px; color:rgba(255,255,255,.6); }
 
-/* ---- 移动端适配 ---- */
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+
+/* ── Responsive ── */
 @media (max-width: 768px) {
   .topbar { padding:10px 14px; }
   .topbar h1 { font-size:1.1em; }
@@ -154,7 +290,6 @@ body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:#0f0f1
   .pg { gap:2px; }
   .pc { width:22px; height:32px; font-size:.45em; }
 }
-
 @media (max-width: 480px) {
   .login-box { padding:30px 24px; }
   .login-box h1 { font-size:1.5em; }
@@ -205,7 +340,7 @@ body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:#0f0f1
       </div>
       <!-- 详情 -->
       <div id="detail" style="display:none">
-        <button class="detail-back" onclick="backToOverview()">← 返回总览</button>
+        <button class="detail-back" onclick="backToOverview()">&larr; 返回总览</button>
         <div class="detail-header">
           <h2 id="detailTitle"></h2>
           <div class="actions">
@@ -363,9 +498,9 @@ function renderLogs(data) {
       <td>${ACTION_NAMES[r.action] || r.action}</td>
       <td>${esc(r.room_id || '')}</td>
       <td>${esc(r.target || '')}</td>
-      <td style="opacity:.6">${esc(detail)}</td>
+      <td style="color:rgba(255,255,255,.4)">${esc(detail)}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="5" style="opacity:.4;text-align:center">暂无记录</td></tr>';
+  }).join('') || '<tr><td colspan="5" style="color:rgba(255,255,255,.25);text-align:center">暂无记录</td></tr>';
 }
 
 // ---- 渲染统计 ----
@@ -384,7 +519,7 @@ function renderStats(data) {
       <td>${rate}%</td>
       <td class="${changeClass}">${p.total_chips_change > 0 ? '+' : ''}${p.total_chips_change}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="6" style="opacity:.4;text-align:center">暂无数据</td></tr>';
+  }).join('') || '<tr><td colspan="6" style="color:rgba(255,255,255,.25);text-align:center">暂无数据</td></tr>';
 
   document.getElementById('historyBody').innerHTML = history.map(h => {
     return `<tr>
@@ -394,7 +529,7 @@ function renderStats(data) {
       <td>${esc(h.winner)}</td>
       <td>${h.pot}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="5" style="opacity:.4;text-align:center">暂无数据</td></tr>';
+  }).join('') || '<tr><td colspan="5" style="color:rgba(255,255,255,.25);text-align:center">暂无数据</td></tr>';
 }
 
 // ---- 总览渲染 ----
@@ -417,7 +552,7 @@ function renderOverview() {
       <div class="rc-actions"><button class="del-btn" onclick="event.stopPropagation();deleteRoom('${r.room_id}')" title="删除房间">&times;</button></div>
       <div class="rc-header">
         <span class="rc-id">${r.room_id}</span>
-        <span style="font-size:.65em;padding:2px 8px;border-radius:6px;background:${badge.color}33;color:${badge.color}">${badge.name}</span>
+        <span style="font-size:.65em;padding:2px 8px;border-radius:6px;background:${badge.color}22;color:${badge.color};border:1px solid ${badge.color}33">${badge.name}</span>
         <span class="rc-phase phase-${r.phase}">${r.phase_name}</span>
       </div>
       <div class="rc-info">
@@ -482,7 +617,7 @@ function renderBullBullDetail(s) {
   document.getElementById('playersGrid').innerHTML = s.players.map((p,pi) => {
     const cards = p.hand && p.hand.length > 0
       ? p.hand.map((c,ci) => `<div class="ec ${c.color}" onclick="openPicker('${esc(p.name)}',${ci})" title="点击换牌"><span class="rk">${c.rank}</span><span class="st">${c.symbol}</span></div>`).join('')
-      : '<div style="opacity:.25;font-size:.8em">未发牌</div>';
+      : '<div style="color:rgba(255,255,255,.2);font-size:.8em">未发牌</div>';
     const res = p.result ? `<div class="p-result">${esc(p.result.display)}</div>` : '';
     const tags = [p.name===s.host?'<span class="p-tag">房主</span>':'', p.folded?'<span class="p-tag" style="color:#e74c3c">弃牌</span>':'', p.confirmed?'<span class="p-tag" style="color:#2ecc71">已亮</span>':''].filter(Boolean).join('');
     return `<div class="p-card${p.folded?' folded':''}">
@@ -506,13 +641,13 @@ function renderMonopolyDetail(s) {
 
   document.getElementById('playersGrid').innerHTML = s.players.map((p, pi) => {
     const props = (p.properties || []).map(pr =>
-      `<span style="display:inline-block;padding:1px 5px;border-radius:3px;font-size:.65em;background:${pr.group_color || '#666'};color:#fff;margin:1px">${esc(pr.name)}${pr.houses > 0 ? ' ' + pr.houses + '🏠' : ''}${pr.mortgaged ? ' 💤' : ''}</span>`
+      `<span style="display:inline-block;padding:1px 5px;border-radius:4px;font-size:.65em;background:${pr.group_color || '#666'};color:#fff;margin:1px;border:1px solid rgba(255,255,255,.1)">${esc(pr.name)}${pr.houses > 0 ? ' ' + pr.houses + '🏠' : ''}${pr.mortgaged ? ' 💤' : ''}</span>`
     ).join('');
     const tags = [p.name === s.host ? '<span class="p-tag">房主</span>' : '', p.in_jail ? '<span class="p-tag" style="color:#e74c3c">监狱</span>' : '', !p.alive ? '<span class="p-tag" style="color:#888">破产</span>' : ''].filter(Boolean).join('');
     return `<div class="p-card${!p.alive ? ' folded' : ''}">
       <div class="p-head"><span class="p-name">${esc(p.name)}${tags}</span><span class="p-chips">💰 $${p.cash}</span></div>
-      <div style="font-size:.75em;opacity:.5;margin-bottom:6px">总资产 $${p.total_asset} · 位置 ${p.position}</div>
-      <div style="margin-bottom:6px">${props || '<span style="opacity:.3;font-size:.8em">无地产</span>'}</div>
+      <div style="font-size:.75em;color:rgba(255,255,255,.35);margin-bottom:6px">总资产 $${p.total_asset} · 位置 ${p.position}</div>
+      <div style="margin-bottom:6px">${props || '<span style="color:rgba(255,255,255,.2);font-size:.8em">无地产</span>'}</div>
       <div class="p-controls">
         <div class="cg"><label>现金:</label><input type="number" class="ci" id="ci${pi}" value="${p.cash}" min="0"><button class="sb" onclick="setChips('${esc(p.name)}',document.getElementById('ci${pi}').value)">改</button></div>
         ${p.name !== s.host ? `<button class="sb dan" onclick="kickP('${esc(p.name)}')">踢出</button>` : ''}
@@ -537,11 +672,11 @@ function renderLudoDetail(s) {
       else if (pos === -1) label = '🏠';
       else if (pos >= 52) label = `冲${pos - 51}`;
       else label = `格${pos}`;
-      return `<span style="font-size:.7em;padding:2px 5px;background:rgba(255,255,255,.05);border-radius:4px;margin:1px;display:inline-block">✈${i+1}: ${label}</span>`;
+      return `<span style="font-size:.7em;padding:2px 5px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:4px;margin:1px;display:inline-block">✈${i+1}: ${label}</span>`;
     }).join('');
     const tags = [p.name === s.host ? '<span class="p-tag">房主</span>' : '', !p.alive ? '<span class="p-tag" style="color:#888">淘汰</span>' : ''].filter(Boolean).join('');
     return `<div class="p-card${!p.alive ? ' folded' : ''}">
-      <div class="p-head"><span class="p-name"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col}"></span> ${esc(p.name)}${tags} (${colName}方)</span><span style="font-size:.8em">完成: ${p.finished}/4</span></div>
+      <div class="p-head"><span class="p-name"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col};box-shadow:0 0 6px ${col}44"></span> ${esc(p.name)}${tags} (${colName}方)</span><span style="font-size:.8em">完成: ${p.finished}/4</span></div>
       <div style="margin:6px 0">${pieces}</div>
       <div class="p-controls">
         ${p.name !== s.host ? `<button class="sb dan" onclick="kickP('${esc(p.name)}')">踢出</button>` : ''}

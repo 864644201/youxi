@@ -4,70 +4,139 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>大富翁 - 在线桌游</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#0f1923;--card:rgba(255,255,255,.06);--card-hover:rgba(255,255,255,.1);
-  --border:rgba(255,255,255,.08);--gold:#f0c040;--green:#2ecc71;--red:#e74c3c;
-  --blue:#3498db;--text:#e8e8e8;--muted:rgba(255,255,255,.45);
-  --board-bg:#1c2541;--board-border:#c9a84c;--cell-bg:#f5f0e1;
+  --bg:#0a0a1a;--bg2:#1a0a2e;--bg3:#0a1628;
+  --glass:rgba(255,255,255,.05);--glass-b:rgba(255,255,255,.1);--glass-h:rgba(255,255,255,.08);
+  --gold:#ffd700;--gold-d:#b8860b;--green:#00e676;--red:#ff5252;
+  --blue:#4fc3f7;--purple:#b388ff;--pink:#ff80ab;
+  --text:#e8e6e3;--muted:rgba(255,255,255,.4);
+  --board-bg:#0d1b2a;--board-border:#c9a84c;--cell-bg:#f5f0e1;
+  --shadow-g:rgba(255,215,0,.15);--shadow-b:rgba(79,195,247,.15);
+  --grad-gold:linear-gradient(135deg,#ffd700,#ff8f00);
+  --grad-blue:linear-gradient(135deg,#4fc3f7,#1565c0);
+  --grad-green:linear-gradient(135deg,#00e676,#00695c);
+  --grad-red:linear-gradient(135deg,#ff5252,#b71c1c);
+  --grad-purple:linear-gradient(135deg,#b388ff,#4a148c);
 }
-body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body{
+  font-family:'Noto Sans SC',-apple-system,"Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;
+  background:linear-gradient(135deg,#0a0a1a 0%,#1a0a2e 35%,#0a1628 65%,#0d1117 100%);
+  background-size:400% 400%;animation:bgShift 20s ease infinite;
+}
+@keyframes bgShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
 .container{max-width:1200px;margin:0 auto;padding:12px}
-a.back{color:var(--muted);text-decoration:none;font-size:.85em;display:inline-block;margin-bottom:6px}
-a.back:hover{color:#fff}
+a.back{color:var(--muted);text-decoration:none;font-size:.85em;display:inline-block;margin-bottom:6px;transition:color .2s,text-shadow .2s}
+a.back:hover{color:var(--gold);text-shadow:0 0 8px rgba(255,215,0,.3)}
+
+/* ── Glass Panel ── */
+.glass{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--glass-b);border-radius:16px;transition:border-color .3s,box-shadow .3s}
+.glass:hover{border-color:rgba(255,255,255,.15);box-shadow:0 4px 24px rgba(0,0,0,.2)}
+.glass-strong{background:rgba(255,255,255,.08);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,.12);border-radius:16px}
+
+/* ── Glow Text ── */
+.glow-gold{text-shadow:0 0 10px rgba(255,215,0,.4),0 0 30px rgba(255,215,0,.15)}
+.glow-blue{text-shadow:0 0 10px rgba(79,195,247,.4),0 0 30px rgba(79,195,247,.15)}
 
 /* ── Lobby ── */
-#lobby{text-align:center;padding-top:30px}
-#lobby h1{font-size:2.4em;text-shadow:0 2px 12px rgba(0,0,0,.5)}
-#lobby .sub{color:var(--muted);margin:6px 0 24px}
-.lobby-card{background:var(--card);border-radius:16px;padding:24px;max-width:380px;margin:0 auto 20px;border:1px solid var(--border)}
-.lobby-card h2{margin-bottom:16px;font-size:1.15em}
-input[type="text"]{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.05);color:#fff;font-size:.95em;outline:none;margin-bottom:10px;text-align:center;transition:border .2s}
-input[type="text"]:focus{border-color:var(--blue)}
-input[type="text"]::placeholder{color:rgba(255,255,255,.3)}
-.btn{padding:10px 24px;border:none;border-radius:8px;font-size:.95em;cursor:pointer;font-weight:600;transition:all .15s;display:inline-flex;align-items:center;gap:4px}
-.btn:active{transform:scale(.96)}
-.btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{background:#2980b9}
-.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#27ae60}
-.btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#c0392b}
-.btn-gold{background:var(--gold);color:#1a1a1a}.btn-gold:hover{background:#ffd666}
-.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
-.btn-outline:hover{border-color:#fff;background:rgba(255,255,255,.05)}
-.btn-sm{padding:6px 12px;font-size:.8em}
-.btn-lg{padding:14px 36px;font-size:1.1em}
-.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+#lobby{text-align:center;padding-top:40px;position:relative}
+#lobby h1{
+  font-family:'Orbitron','Noto Sans SC',sans-serif;font-size:2.8em;font-weight:900;
+  background:linear-gradient(135deg,#ffd700,#ff8f00,#ffd700);background-size:200% 200%;
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  animation:gradText 3s ease infinite;letter-spacing:2px;
+}
+@keyframes gradText{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+#lobby .sub{color:var(--muted);margin:8px 0 28px;font-size:.95em;letter-spacing:1px}
+.lobby-card{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:16px;padding:28px;max-width:400px;margin:0 auto 24px;border:1px solid var(--glass-b);box-shadow:0 8px 32px rgba(0,0,0,.3)}
+.lobby-card:hover{border-color:rgba(255,215,0,.15);box-shadow:0 8px 32px rgba(0,0,0,.3),0 0 20px var(--shadow-g)}
+.lobby-card h2{margin-bottom:18px;font-size:1.15em;font-weight:600}
 
+/* ── Inputs ── */
+input[type="text"]{
+  width:100%;padding:12px 16px;border:1px solid var(--glass-b);border-radius:10px;
+  background:rgba(255,255,255,.04);color:#fff;font-size:.95em;outline:none;margin-bottom:12px;
+  text-align:center;transition:all .3s;font-family:inherit;
+}
+input[type="text"]:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(79,195,247,.15),0 0 16px rgba(79,195,247,.1)}
+input[type="text"]::placeholder{color:rgba(255,255,255,.25)}
+
+/* ── Buttons ── */
+.btn{
+  padding:10px 24px;border:none;border-radius:10px;font-size:.95em;cursor:pointer;
+  font-weight:600;transition:all .25s;display:inline-flex;align-items:center;gap:4px;
+  font-family:inherit;position:relative;overflow:hidden;
+}
+.btn::after{content:'';position:absolute;top:50%;left:50%;width:0;height:0;background:rgba(255,255,255,.15);border-radius:50%;transform:translate(-50%,-50%);transition:width .4s,height .4s}
+.btn:active::after{width:200px;height:200px}
+.btn:active{transform:scale(.95)}
+.btn-blue{background:var(--grad-blue);color:#fff;box-shadow:0 4px 15px rgba(79,195,247,.25)}
+.btn-blue:hover{box-shadow:0 4px 20px rgba(79,195,247,.4),0 0 30px rgba(79,195,247,.15);transform:translateY(-1px)}
+.btn-green{background:var(--grad-green);color:#fff;box-shadow:0 4px 15px rgba(0,230,118,.2)}
+.btn-green:hover{box-shadow:0 4px 20px rgba(0,230,118,.35);transform:translateY(-1px)}
+.btn-red{background:var(--grad-red);color:#fff;box-shadow:0 4px 15px rgba(255,82,82,.2)}
+.btn-red:hover{box-shadow:0 4px 20px rgba(255,82,82,.35);transform:translateY(-1px)}
+.btn-gold{background:var(--grad-gold);color:#1a1a1a;box-shadow:0 4px 15px rgba(255,215,0,.25)}
+.btn-gold:hover{box-shadow:0 4px 20px rgba(255,215,0,.4),0 0 30px rgba(255,215,0,.15);transform:translateY(-1px)}
+.btn-outline{background:transparent;border:1px solid var(--glass-b);color:var(--text)}
+.btn-outline:hover{border-color:rgba(255,255,255,.25);background:rgba(255,255,255,.05);box-shadow:0 0 16px rgba(255,255,255,.05)}
+.btn-sm{padding:6px 14px;font-size:.8em;border-radius:8px}
+.btn-lg{padding:14px 36px;font-size:1.1em;border-radius:12px}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important}
+
+/* ── Rooms ── */
 .rooms{max-width:560px;margin:0 auto}
-.rooms-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.rooms-head h2{font-size:1.05em}
-.join-bar{margin-bottom:12px}
-.room-list{display:flex;flex-direction:column;gap:8px}
-.rc{background:var(--card);border-radius:12px;padding:14px 16px;cursor:pointer;border:1px solid transparent;transition:all .2s}
-.rc:hover{border-color:var(--blue);background:var(--card-hover)}
-.rc-top{display:flex;justify-content:space-between;margin-bottom:4px}
-.rc-host{font-weight:600}.rc-badge{font-size:.7em;padding:2px 8px;border-radius:6px;background:rgba(52,152,219,.2);color:var(--blue)}
+.rooms-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.rooms-head h2{font-size:1.05em;font-weight:600}
+.join-bar{margin-bottom:14px}
+.room-list{display:flex;flex-direction:column;gap:10px}
+.rc{
+  background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-radius:14px;padding:16px 18px;cursor:pointer;border:1px solid transparent;
+  transition:all .3s;
+}
+.rc:hover{border-color:var(--blue);background:var(--glass-h);box-shadow:0 0 20px rgba(79,195,247,.08);transform:translateY(-2px)}
+.rc-top{display:flex;justify-content:space-between;margin-bottom:6px}
+.rc-host{font-weight:600}.rc-badge{font-size:.7em;padding:3px 10px;border-radius:8px;background:rgba(79,195,247,.15);color:var(--blue);font-weight:500}
 .rc-info{font-size:.78em;color:var(--muted)}
-.rc-players{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
-.rc-tag{background:rgba(255,255,255,.06);padding:1px 8px;border-radius:8px;font-size:.78em}
-.empty{text-align:center;padding:28px;color:var(--muted);font-size:.9em}
+.rc-players{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.rc-tag{background:rgba(255,255,255,.06);padding:2px 10px;border-radius:10px;font-size:.78em}
+.empty{text-align:center;padding:32px;color:var(--muted);font-size:.9em}
 
 /* ── Waiting ── */
-#waiting{text-align:center;padding-top:30px}
-.room-code{font-size:2em;font-weight:700;letter-spacing:4px;background:var(--card);padding:10px 24px;border-radius:10px;display:inline-block;margin:10px 0;cursor:pointer;border:1px solid var(--border);transition:background .2s}
-.room-code:hover{background:var(--card-hover)}
-.p-tags{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:16px 0}
-.p-tag{background:var(--card);padding:7px 16px;border-radius:16px;font-size:.9em}
+#waiting{text-align:center;padding-top:40px}
+.room-code{
+  font-family:'Orbitron',monospace;font-size:2.2em;font-weight:700;letter-spacing:6px;
+  background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  padding:12px 28px;border-radius:14px;display:inline-block;margin:12px 0;cursor:pointer;
+  border:1px solid var(--glass-b);transition:all .3s;color:var(--gold);
+  text-shadow:0 0 15px rgba(255,215,0,.3);
+}
+.room-code:hover{border-color:rgba(255,215,0,.3);box-shadow:0 0 30px rgba(255,215,0,.1);background:rgba(255,215,0,.05)}
+.p-tags{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:18px 0}
+.p-tag{background:var(--glass);backdrop-filter:blur(12px);padding:8px 18px;border-radius:20px;font-size:.9em;border:1px solid var(--glass-b);transition:all .3s}
+.p-tag:hover{border-color:rgba(255,255,255,.2)}
+.p-tag.host{border-color:rgba(255,215,0,.25);background:rgba(255,215,0,.05)}
 .p-tag.host::after{content:" 👑"}
 
 /* ── Game ── */
 #game{padding-top:6px}
-.topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;background:var(--card);border-radius:10px;margin-bottom:8px;flex-wrap:wrap;gap:6px;border:1px solid var(--border)}
-.topbar .turn{font-weight:700;color:var(--gold);font-size:1em}
+.topbar{
+  display:flex;justify-content:space-between;align-items:center;padding:10px 16px;
+  background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-radius:14px;margin-bottom:10px;flex-wrap:wrap;gap:8px;
+  border:1px solid var(--glass-b);
+}
+.topbar .turn{font-weight:700;color:var(--gold);font-size:1em;text-shadow:0 0 10px rgba(255,215,0,.25)}
 .topbar .info{color:var(--muted);font-size:.85em}
-.topbar .dice-sum{font-size:1.2em;font-weight:700}
+.topbar .dice-sum{font-size:1.3em;font-weight:700;letter-spacing:2px}
 
-.layout{display:flex;gap:12px;justify-content:center}
+.layout{display:flex;gap:14px;justify-content:center}
 
 /* ── Board ── */
 .board-wrap{flex-shrink:0}
@@ -75,14 +144,23 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.3)}
   display:grid;
   grid-template-columns:80px repeat(9,56px) 80px;
   grid-template-rows:80px repeat(9,56px) 80px;
-  gap:2px;background:var(--board-bg);border:4px solid var(--board-border);
-  border-radius:10px;position:relative;
-  box-shadow:0 0 0 2px #8b6914,0 0 0 6px var(--board-border),0 8px 32px rgba(0,0,0,.5),inset 0 0 40px rgba(0,0,0,.15);
-  background-image:radial-gradient(ellipse at 30% 40%,rgba(255,255,255,.04) 0%,transparent 60%),radial-gradient(ellipse at 70% 60%,rgba(0,0,0,.08) 0%,transparent 50%);
+  gap:2px;background:var(--board-bg);
+  border:4px solid var(--board-border);border-radius:12px;position:relative;
+  box-shadow:
+    0 0 0 2px #8b6914,0 0 0 6px var(--board-border),
+    0 0 40px rgba(201,168,76,.15),0 0 80px rgba(201,168,76,.05),
+    0 12px 40px rgba(0,0,0,.6),inset 0 0 40px rgba(0,0,0,.2);
+  background-image:radial-gradient(ellipse at 30% 40%,rgba(255,255,255,.03) 0%,transparent 60%),radial-gradient(ellipse at 70% 60%,rgba(0,0,0,.06) 0%,transparent 50%);
 }
 
 /* ── Cells ── */
-.c{background:var(--cell-bg);border-radius:3px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.52em;color:#222;text-align:center;padding:1px;overflow:hidden;transition:box-shadow .3s,transform .15s;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(0,0,0,.08)}
+.c{
+  background:var(--cell-bg);border-radius:4px;position:relative;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;font-size:.52em;color:#222;text-align:center;
+  padding:1px;overflow:hidden;transition:all .3s ease;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(0,0,0,.08);
+}
+.c:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(0,0,0,.08),0 0 8px rgba(255,215,0,.15);z-index:2}
 .c.corner{font-size:.6em;font-weight:700;padding:2px;background:linear-gradient(135deg,#f5f0e1,#e8dcc8)}
 .c.corner .c-icon{font-size:1.5em;margin-bottom:1px}
 .c .cbar{width:100%;height:10px;flex-shrink:0}
@@ -92,18 +170,18 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.3)}
 .c .chouses{display:flex;gap:1px;position:absolute;top:2px;right:2px}
 .c .chouses .hh{width:6px;height:6px;border-radius:1px;background:var(--green);box-shadow:0 1px 2px rgba(0,0,0,.2)}
 .c .chouses .hotel{background:var(--red);width:8px}
-.c .cowner{position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 3px 3px}
+.c .cowner{position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 4px 4px}
 
 /* 3D Figurine Chess Pieces */
 .c .cpawn{
   position:absolute;bottom:1px;left:2px;
   width:1.8em;height:2.8em;z-index:2;transition:all .4s ease;
-  filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));
+  filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));
 }
 .c .cpawn .pawn-head{
   width:1em;height:1em;border-radius:50%;
   margin:0 auto 0.1em;
-  box-shadow:0 1px 2px rgba(0,0,0,.3),inset 0 -2px 3px rgba(0,0,0,.2),inset 0 2px 3px rgba(255,255,255,.35);
+  box-shadow:0 1px 3px rgba(0,0,0,.3),inset 0 -2px 3px rgba(0,0,0,.2),inset 0 2px 3px rgba(255,255,255,.35);
 }
 .c .cpawn .pawn-neck{
   width:0.5em;height:0.2em;margin:0 auto;
@@ -118,16 +196,28 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.3)}
   border-radius:0.1em 0.1em 0.3em 0.3em;
   box-shadow:0 2px 3px rgba(0,0,0,.4);
 }
-.c .cmort{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;font-size:1.2em;z-index:1}
-.c.hl{box-shadow:inset 0 0 0 2px var(--gold),0 0 8px rgba(240,192,64,.3)}
-.c.anim-hl{box-shadow:inset 0 0 0 2.5px #ff6b6b,0 0 12px rgba(255,107,107,.4);transform:scale(1.08);z-index:3}
+.c .cmort{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;font-size:1.2em;z-index:1;backdrop-filter:blur(1px)}
+.c.hl{box-shadow:inset 0 0 0 2px var(--gold),0 0 12px rgba(255,215,0,.35);z-index:3}
+.c.anim-hl{box-shadow:inset 0 0 0 2.5px #ff6b6b,0 0 16px rgba(255,107,107,.45);transform:scale(1.08);z-index:3}
 
 /* ── Center ── */
-.bcenter{position:absolute;top:83px;left:83px;right:83px;bottom:83px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#1c2541,#0d1b2a);border-radius:6px;padding:8px;pointer-events:auto;z-index:5;box-shadow:inset 0 0 20px rgba(0,0,0,.2)}
-.bcenter .logo{font-size:1.6em;font-weight:900;color:var(--gold);letter-spacing:3px;text-shadow:0 2px 8px rgba(0,0,0,.3)}
-.bcenter .dice-box{font-size:2.4em;margin:8px 0;min-height:1.2em;transition:all .3s}
+.bcenter{
+  position:absolute;top:83px;left:83px;right:83px;bottom:83px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,rgba(13,27,42,.95),rgba(10,10,26,.95));
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-radius:8px;padding:8px;pointer-events:auto;z-index:5;
+  border:1px solid rgba(201,168,76,.12);
+  box-shadow:inset 0 0 30px rgba(0,0,0,.3),0 0 20px rgba(201,168,76,.05);
+}
+.bcenter .logo{
+  font-family:'Orbitron','Noto Sans SC',sans-serif;font-size:1.6em;font-weight:900;
+  color:var(--gold);letter-spacing:4px;
+  text-shadow:0 0 15px rgba(255,215,0,.35),0 0 40px rgba(255,215,0,.1);
+}
+.bcenter .dice-box{font-size:2.6em;margin:10px 0;min-height:1.2em;transition:all .3s;filter:drop-shadow(0 2px 8px rgba(0,0,0,.3))}
 .bcenter .dice-box.rolling{animation:diceroll .5s ease}
-.bcenter .prompt{font-size:.82em;text-align:center;color:var(--muted);line-height:1.4;max-width:200px}
+.bcenter .prompt{font-size:.82em;text-align:center;color:var(--muted);line-height:1.5;max-width:200px}
 
 @keyframes diceroll{
   0%{transform:rotateX(0) scale(1)}
@@ -138,89 +228,150 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.3)}
 }
 
 /* ── Side panel ── */
-.side{width:250px;display:flex;flex-direction:column;gap:6px;max-height:700px;overflow-y:auto}
-.pc{background:var(--card);border-radius:10px;padding:10px 12px;border:2px solid transparent;transition:all .2s}
-.pc.cur{border-color:var(--gold);box-shadow:0 0 10px rgba(240,192,64,.15)}
-.pc.me{background:rgba(52,152,219,.08)}
-.pc.dead{opacity:.35;text-decoration:line-through}
+.side{width:260px;display:flex;flex-direction:column;gap:8px;max-height:700px;overflow-y:auto}
+.pc{
+  background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-radius:14px;padding:12px 14px;border:1px solid var(--glass-b);transition:all .3s;
+}
+.pc.cur{border-color:rgba(255,215,0,.35);box-shadow:0 0 20px rgba(255,215,0,.1),0 0 40px rgba(255,215,0,.03)}
+.pc.me{background:rgba(79,195,247,.06);border-color:rgba(79,195,247,.15)}
+.pc.dead{opacity:.3;text-decoration:line-through}
 .pc-head{display:flex;justify-content:space-between;align-items:center}
-.pc-name{font-weight:700;font-size:.85em}
-.pc-cash{color:var(--gold);font-weight:700;font-size:.85em}
+.pc-name{font-weight:600;font-size:.85em}
+.pc-cash{color:var(--gold);font-weight:700;font-size:.85em;text-shadow:0 0 6px rgba(255,215,0,.15)}
 .pc-asset{font-size:.7em;color:var(--muted);text-align:right}
-.pc-status{font-size:.72em;color:var(--red);margin-top:2px}
-.pc-props{display:flex;flex-wrap:wrap;gap:2px;margin-top:4px}
-.pc-pr{padding:1px 5px;border-radius:3px;font-size:.65em;font-weight:600;color:#fff;cursor:pointer;transition:opacity .15s}
-.pc-pr:hover{opacity:.8}
+.pc-status{font-size:.72em;color:var(--red);margin-top:3px;font-weight:500}
+.pc-props{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+.pc-pr{padding:2px 6px;border-radius:4px;font-size:.65em;font-weight:600;color:#fff;cursor:pointer;transition:all .2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.pc-pr:hover{opacity:.85;transform:scale(1.05);box-shadow:0 2px 6px rgba(0,0,0,.3)}
 .pc-pr.mort{opacity:.4;text-decoration:line-through}
 
 /* ── Action panel ── */
-.act{background:var(--card);border-radius:12px;padding:16px;margin-top:8px;border:1px solid var(--border)}
-.act h3{font-size:.95em;color:var(--gold);margin-bottom:10px;text-align:center}
-.act-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
-.act-btns .btn{min-width:80px}
-.prop-info{background:rgba(255,255,255,.03);border-radius:8px;padding:12px;margin:10px 0;text-align:left;font-size:.85em;line-height:1.7;border:1px solid var(--border)}
+.act{
+  background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-radius:14px;padding:18px;margin-top:10px;border:1px solid var(--glass-b);
+}
+.act h3{font-size:.95em;color:var(--gold);margin-bottom:12px;text-align:center;text-shadow:0 0 8px rgba(255,215,0,.15)}
+.act-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.act-btns .btn{min-width:85px}
+.prop-info{
+  background:rgba(255,255,255,.03);border-radius:10px;padding:14px;margin:12px 0;
+  text-align:left;font-size:.85em;line-height:1.8;border:1px solid var(--glass-b);
+}
 .prop-info .pi-name{font-weight:700;font-size:1.05em;margin-bottom:4px}
 .prop-info .pi-price{color:var(--gold);font-weight:700}
 .prop-info .pi-rent{font-size:.85em;color:var(--muted)}
 .prop-info .pi-rent b{color:var(--text)}
 
 /* ── Auction ── */
-.auction-panel{background:linear-gradient(135deg,rgba(240,192,64,.08),rgba(240,192,64,.02));border:1px solid rgba(240,192,64,.2);border-radius:12px;padding:16px;margin-top:8px;text-align:center}
-.auction-panel h3{color:var(--gold);margin-bottom:8px;font-size:1.1em}
-.auction-panel .a-price{font-size:1.8em;font-weight:900;color:var(--gold);margin:8px 0}
-.auction-panel .a-bidder{color:var(--green);font-size:.9em;margin-bottom:8px}
-.auction-input{display:flex;gap:6px;justify-content:center;margin:8px 0;align-items:center}
-.auction-input input{width:100px;padding:8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,.05);color:#fff;text-align:center;font-size:.9em}
+.auction-panel{
+  background:linear-gradient(135deg,rgba(255,215,0,.06),rgba(255,143,0,.03));
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border:1px solid rgba(255,215,0,.18);border-radius:14px;padding:18px;
+  margin-top:10px;text-align:center;
+  box-shadow:0 0 30px rgba(255,215,0,.05);animation:aucPulse 2s ease infinite;
+}
+@keyframes aucPulse{0%,100%{box-shadow:0 0 20px rgba(255,215,0,.05)}50%{box-shadow:0 0 35px rgba(255,215,0,.12)}}
+.auction-panel h3{color:var(--gold);margin-bottom:10px;font-size:1.1em;text-shadow:0 0 10px rgba(255,215,0,.2)}
+.auction-panel .a-price{font-size:2em;font-weight:900;color:var(--gold);margin:8px 0;text-shadow:0 0 20px rgba(255,215,0,.3);font-family:'Orbitron',sans-serif}
+.auction-panel .a-bidder{color:var(--green);font-size:.9em;margin-bottom:10px}
+.auction-input{display:flex;gap:8px;justify-content:center;margin:10px 0;align-items:center}
+.auction-input input{
+  width:110px;padding:8px;border:1px solid var(--glass-b);border-radius:8px;
+  background:rgba(255,255,255,.05);color:#fff;text-align:center;font-size:.9em;
+  outline:none;transition:all .3s;
+}
+.auction-input input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,215,0,.1)}
 
 /* ── Property detail popup ── */
-.prop-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a2a1a;border:2px solid var(--board-border);border-radius:16px;padding:20px;z-index:100;min-width:280px;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.6)}
-.prop-popup .pp-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.prop-popup .pp-color{width:100%;height:12px;border-radius:6px;margin-bottom:8px}
-.prop-popup .pp-name{font-weight:700;font-size:1.1em}
-.prop-popup .pp-rent{font-size:.85em;line-height:1.8;margin:8px 0}
-.prop-popup .pp-rent div{display:flex;justify-content:space-between}
-.prop-popup .pp-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;justify-content:center}
-.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:99}
+.prop-popup{
+  background:rgba(15,15,30,.95);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);
+  border:1px solid rgba(201,168,76,.25);border-radius:18px;padding:24px;z-index:100;
+  min-width:280px;max-width:360px;
+  box-shadow:0 0 40px rgba(201,168,76,.08),0 16px 48px rgba(0,0,0,.5);
+  animation:popIn .3s ease;
+}
+@keyframes popIn{from{opacity:0;transform:translate(-50%,-50%) scale(.9)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.prop-popup .pp-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.prop-popup .pp-color{width:100%;height:14px;border-radius:7px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.prop-popup .pp-name{font-weight:700;font-size:1.15em}
+.prop-popup .pp-rent{font-size:.85em;line-height:2;margin:10px 0}
+.prop-popup .pp-rent div{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.prop-popup .pp-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;justify-content:center}
+.overlay{
+  position:fixed;top:0;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  z-index:99;animation:fadeIn .2s;
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
 /* ── Event log ── */
-.elog{background:var(--card);border-radius:10px;padding:8px 10px;margin-top:8px;border:1px solid var(--border);max-height:160px;overflow-y:auto}
-.elog-title{font-weight:700;font-size:.8em;color:var(--muted);margin-bottom:4px}
-.elog-item{font-size:.75em;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.03);display:flex;gap:4px;line-height:1.3}
-.elog-item .ei-icon{flex-shrink:0;width:18px;text-align:center}
+.elog{
+  background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-radius:12px;padding:10px 12px;margin-top:10px;border:1px solid var(--glass-b);
+  max-height:170px;overflow-y:auto;
+}
+.elog-title{font-weight:600;font-size:.8em;color:var(--muted);margin-bottom:6px;letter-spacing:.5px}
+.elog-item{font-size:.75em;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);display:flex;gap:4px;line-height:1.3;animation:slideIn .3s ease}
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+.elog-item .ei-icon{flex-shrink:0;width:20px;text-align:center}
 .elog-item .ei-text{flex:1}
 .elog-item .ei-time{color:var(--muted);font-size:.9em;flex-shrink:0}
 .elog-item.money{color:var(--gold)}
 .elog-item.bankruptcy{color:var(--red)}
 .elog-item.victory{color:var(--gold);font-weight:700}
-.elog-item.auction{color:#e67e22}
+.elog-item.auction{color:#ffab40}
 .elog-item.buy{color:var(--green)}
 .elog-item.card{color:var(--blue)}
 
 /* ── Chat ── */
-.chat{background:var(--card);border-radius:10px;border:1px solid var(--border);margin-top:8px;display:flex;flex-direction:column;max-height:180px}
-.chat-h{padding:6px 10px;font-weight:600;font-size:.8em;border-bottom:1px solid var(--border)}
-.chat-msgs{flex:1;overflow-y:auto;padding:4px 8px;display:flex;flex-direction:column;gap:3px;min-height:50px;max-height:100px}
-.cm{font-size:.75em;line-height:1.3}.cm .cmn{color:var(--gold);font-weight:600}.cm .ctm{color:var(--muted);font-size:.9em;margin-left:3px}
-.chat-in{display:flex;gap:4px;padding:4px 8px;border-top:1px solid var(--border)}
-.chat-in input{flex:1;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:rgba(255,255,255,.04);color:#fff;font-size:.78em;outline:none}
-.chat-in .btn{padding:4px 10px;font-size:.78em}
+.chat{
+  background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-radius:12px;border:1px solid var(--glass-b);margin-top:10px;
+  display:flex;flex-direction:column;max-height:180px;
+}
+.chat-h{padding:8px 12px;font-weight:600;font-size:.8em;border-bottom:1px solid var(--glass-b);color:var(--muted);letter-spacing:.5px}
+.chat-msgs{flex:1;overflow-y:auto;padding:6px 10px;display:flex;flex-direction:column;gap:4px;min-height:50px;max-height:100px}
+.cm{font-size:.75em;line-height:1.4}.cm .cmn{color:var(--gold);font-weight:600}.cm .ctm{color:var(--muted);font-size:.85em;margin-left:4px}
+.chat-in{display:flex;gap:6px;padding:6px 10px;border-top:1px solid var(--glass-b)}
+.chat-in input{flex:1;padding:6px 10px;border:1px solid var(--glass-b);border-radius:8px;background:rgba(255,255,255,.03);color:#fff;font-size:.78em;outline:none;transition:all .3s}
+.chat-in input:focus{border-color:rgba(79,195,247,.3);box-shadow:0 0 8px rgba(79,195,247,.1)}
+.chat-in .btn{padding:6px 12px;font-size:.78em}
 
 /* ── Toast ── */
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:10px 20px;border-radius:8px;font-size:.9em;z-index:200;animation:toastin .3s}
-@keyframes toastin{from{opacity:0;transform:translateX(-50%) translateY(8px)}}
-.conn{position:fixed;top:8px;right:8px;font-size:.75em;padding:3px 10px;border-radius:10px;z-index:100}
-.conn.ok{background:rgba(46,204,113,.25)}.conn.fail{background:rgba(231,76,60,.25)}
+.toast{
+  position:fixed;bottom:28px;left:50%;
+  background:rgba(15,15,30,.9);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  color:#fff;padding:12px 24px;border-radius:12px;font-size:.9em;z-index:200;
+  border:1px solid var(--glass-b);box-shadow:0 8px 24px rgba(0,0,0,.4);
+  animation:toastIn .4s cubic-bezier(.175,.885,.32,1.275);
+}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(16px) scale(.9)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}
+.conn{
+  position:fixed;top:10px;right:10px;font-size:.72em;padding:4px 12px;border-radius:12px;
+  z-index:100;font-weight:500;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  transition:all .3s;
+}
+.conn.ok{background:rgba(0,230,118,.12);color:var(--green);border:1px solid rgba(0,230,118,.2);box-shadow:0 0 12px rgba(0,230,118,.1)}
+.conn.fail{background:rgba(255,82,82,.12);color:var(--red);border:1px solid rgba(255,82,82,.2);animation:connPulse 2s ease infinite}
+@keyframes connPulse{0%,100%{box-shadow:0 0 8px rgba(255,82,82,.1)}50%{box-shadow:0 0 16px rgba(255,82,82,.25)}}
 
 /* ── Pawn bounce ── */
 @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 .pawn-bounce{animation:bounce .4s ease 2}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.18)}
 
 /* ── Responsive ── */
 @media(max-width:920px){
   .board{grid-template-columns:54px repeat(9,40px) 54px;grid-template-rows:54px repeat(9,40px) 54px}
   .bcenter{top:58px;left:58px;right:58px;bottom:58px}
   .side{width:100%;flex-direction:row;flex-wrap:wrap;max-height:none}
-  .side .pc{flex:1;min-width:130px}
+  .side .pc{flex:1;min-width:140px}
   .layout{flex-direction:column;align-items:center}
   .c{font-size:.42em}.c.corner{font-size:.5em}
 }
@@ -229,8 +380,9 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.3)}
   .board{grid-template-columns:42px repeat(9,32px) 42px;grid-template-rows:42px repeat(9,32px) 42px}
   .bcenter{top:46px;left:46px;right:46px;bottom:46px}
   .c{font-size:.32em;padding:0}.c .cbar{height:5px}.c.corner{font-size:.38em}.c.corner .c-icon{font-size:1em}
-  .bcenter .logo{font-size:1em;letter-spacing:1px}.bcenter .dice-box{font-size:1.6em}
+  .bcenter .logo{font-size:1em;letter-spacing:2px}.bcenter .dice-box{font-size:1.6em}
   .bcenter .prompt{font-size:.65em}
+  #lobby h1{font-size:2em}
 }
 </style>
 </head>
@@ -258,7 +410,7 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.3)}
 <div class="container" id="waiting" style="display:none">
   <h2>等待开始</h2>
   <div class="room-code" id="rCode" onclick="copyCode()">------</div>
-  <p style="color:var(--muted);font-size:.8em">点击复制房间号发给朋友</p>
+  <p style="color:var(--muted);font-size:.8em;margin-top:4px">点击复制房间号发给朋友</p>
   <div class="p-tags" id="pList"></div>
   <div id="startArea"></div>
 </div>
@@ -517,8 +669,8 @@ function renderActions(s){
       <h3 style="color:var(--gold)">🤝 交易请求</h3>
       <p style="font-size:.85em;margin:8px 0"><b>${esc(t.proposer)}</b> 提议:</p>
       <div style="display:flex;gap:12px;justify-content:center;margin:10px 0;font-size:.85em">
-        <div style="padding:8px 12px;background:rgba(46,204,113,.1);border-radius:8px"><strong style="color:var(--green)">给你:</strong><br>${offerParts.join(', ') || '无'}</div>
-        <div style="padding:8px 12px;background:rgba(231,76,60,.1);border-radius:8px"><strong style="color:var(--red)">换:</strong><br>${reqParts.join(', ') || '无'}</div>
+        <div style="padding:8px 12px;background:rgba(0,230,118,.08);border-radius:10px;border:1px solid rgba(0,230,118,.12)"><strong style="color:var(--green)">给你:</strong><br>${offerParts.join(', ') || '无'}</div>
+        <div style="padding:8px 12px;background:rgba(255,82,82,.08);border-radius:10px;border:1px solid rgba(255,82,82,.12)"><strong style="color:var(--red)">换:</strong><br>${reqParts.join(', ') || '无'}</div>
       </div>
       <div class="act-btns" style="margin-top:10px">
         <button class="btn btn-green" onclick="send({action:'accept_trade'})">接受</button>
@@ -549,7 +701,7 @@ function renderActions(s){
     el.innerHTML=`<div class="act">
       <div class="prop-info">
         <div class="pi-name">${sp.name}</div>
-        ${g?`<div style="display:inline-block;padding:2px 8px;border-radius:4px;background:${g.c};color:#fff;font-size:.8em;margin:4px 0">${g.n}</div>`:''}
+        ${g?`<div style="display:inline-block;padding:3px 10px;border-radius:6px;background:${g.c};color:#fff;font-size:.8em;margin:4px 0">${g.n}</div>`:''}
         <div>价格: <span class="pi-price">$${sp.price}</span></div>
         ${sp.rent?`<div class="pi-rent">基础租金: <b>$${sp.rent[0]}</b> · 垄断: <b>$${sp.rent[0]*2}</b></div>`:''}
       </div>
@@ -580,7 +732,7 @@ function renderActions(s){
   if(me&&me.properties&&me.properties.length>0){
     const mons=getMonopolies(me);
     if(mons.length>0){
-      extra+='<div style="margin-top:10px"><strong style="font-size:.85em;color:var(--gold)">建筑</strong><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+      extra+='<div style="margin-top:12px"><strong style="font-size:.85em;color:var(--gold)">建筑</strong><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">';
       mons.forEach(g=>{me.properties.filter(p=>p.group===g&&p.houses<5&&!p.mortgaged).forEach(pr=>{
         extra+=`<button class="btn btn-sm btn-outline" onclick="buyHouse(${pr.index})">${pr.name} ${pr.houses}→${pr.houses+1}</button>`;
       });});
@@ -590,26 +742,26 @@ function renderActions(s){
     const mgProps=me.properties.filter(p=>p.mortgaged);
     const unmgProps=me.properties.filter(p=>!p.mortgaged&&p.houses===0);
     if(unmgProps.length>0){
-      extra+='<div style="margin-top:6px"><strong style="font-size:.85em;color:var(--muted)">抵押</strong><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+      extra+='<div style="margin-top:8px"><strong style="font-size:.85em;color:var(--muted)">抵押</strong><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">';
       unmgProps.forEach(pr=>{extra+=`<button class="btn btn-sm btn-outline" onclick="mortgageProp(${pr.index})">${pr.name} +$${pr.mortgage_value}</button>`;});
       extra+='</div></div>';
     }
     // 卖房
     const sellableProps=me.properties.filter(p=>p.houses>0&&!p.mortgaged);
     if(sellableProps.length>0){
-      extra+='<div style="margin-top:6px"><strong style="font-size:.85em;color:var(--muted)">卖房</strong><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+      extra+='<div style="margin-top:8px"><strong style="font-size:.85em;color:var(--muted)">卖房</strong><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">';
       sellableProps.forEach(pr=>{const refund=Math.floor(pr.house_cost/2);extra+=`<button class="btn btn-sm btn-outline" onclick="sellHouse(${pr.index})">${pr.name} ${pr.houses}→${pr.houses-1} +$${refund}</button>`;});
       extra+='</div></div>';
     }
     if(mgProps.length>0){
-      extra+='<div style="margin-top:6px"><strong style="font-size:.85em;color:var(--muted)">赎回</strong><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">';
+      extra+='<div style="margin-top:8px"><strong style="font-size:.85em;color:var(--muted)">赎回</strong><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">';
       mgProps.forEach(pr=>{const cost=Math.floor(pr.mortgage_value*1.1);extra+=`<button class="btn btn-sm btn-gold" onclick="unmortgageProp(${pr.index})">${pr.name} -$${cost}</button>`;});
       extra+='</div></div>';
     }
   }
   // 交易按钮
   if (s.phase === 'playing' && mt && !s.pending_action && (!s.auction || s.auction.ended)) {
-    extra += '<div style="margin-top:8px;text-align:center"><button class="btn btn-sm btn-outline" onclick="showTradePanel()">发起交易 🤝</button></div>';
+    extra += '<div style="margin-top:10px;text-align:center"><button class="btn btn-sm btn-outline" onclick="showTradePanel()">发起交易 🤝</button></div>';
   }
   el.innerHTML=`<div class="act"><div class="act-btns"><button class="btn btn-blue btn-lg${rolledDoubles?' btn-green':''}" onclick="rollDice()">${rollLabel}</button></div>${extra}</div>`;
   if(prompt)prompt.textContent='轮到你了!';
@@ -623,7 +775,7 @@ function renderAuction(s){
   const div=document.createElement('div');div.className='auction-panel';
   const canBid=a.players&&a.players.includes(myName);
   div.innerHTML=`<h3>🔨 拍卖: ${sp.name}</h3>
-    ${g?`<div style="display:inline-block;padding:2px 8px;border-radius:4px;background:${g.c};color:#fff;font-size:.8em">${g.n}</div>`:''}
+    ${g?`<div style="display:inline-block;padding:3px 10px;border-radius:6px;background:${g.c};color:#fff;font-size:.8em">${g.n}</div>`:''}
     <div class="a-price">$${a.price}</div>
     <div class="a-bidder">${a.highest_bidder?`最高出价: ${a.highest_bidder}`:'无人出价'}</div>
     ${canBid?`<div class="auction-input"><input type="number" id="bidAmount" value="${a.price+10}" min="${a.price+1}" step="10"><button class="btn btn-gold" onclick="bidAuction()">出价</button><button class="btn btn-outline" onclick="passAuction()">放弃</button></div>`:`<p style="color:var(--muted);font-size:.8em">${myName} 不能参与此拍卖</p>`}
@@ -676,9 +828,9 @@ function showPropDetail(idx){
     ${g.c?`<div class="pp-color" style="background:${g.c}"></div>`:''}
     <div class="pp-name">${sp.name}</div>
     <div style="font-size:.8em;color:var(--muted)">${sp.type==='property'?'地产':sp.type==='railroad'?'铁路':'公用事业'}${g.n?' · '+g.n:''}</div>
-    <div style="font-size:.9em;margin:4px 0">价格: <b style="color:var(--gold)">$${sp.price}</b>${sp.mortgage?` · 抵押: $${sp.mortgage}`:''}</div>
+    <div style="font-size:.9em;margin:6px 0">价格: <b style="color:var(--gold)">$${sp.price}</b>${sp.mortgage?` · 抵押: $${sp.mortgage}`:''}</div>
     ${rentHtml}
-    ${owner?`<div style="margin-top:8px;font-size:.85em">拥有者: <b style="color:${PC[gs.players.findIndex(p=>p.name===owner)%PC.length]}">${owner}</b>${houses>0?' · '+houses+'栋房':''}${mortgaged?' · 已抵押':''}</div>`:'<div style="margin-top:8px;font-size:.85em;color:var(--muted)">无人拥有</div>'}
+    ${owner?`<div style="margin-top:10px;font-size:.85em">拥有者: <b style="color:${PC[gs.players.findIndex(p=>p.name===owner)%PC.length]}">${owner}</b>${houses>0?' · '+houses+'栋房':''}${mortgaged?' · 已抵押':''}</div>`:'<div style="margin-top:10px;font-size:.85em;color:var(--muted)">无人拥有</div>'}
   </div>`;
 }
 
@@ -789,20 +941,20 @@ function showTradePanel() {
   overlay.style.display = '';
   panel.style.display = '';
 
-  let html = '<div class="prop-popup"><h3 style="color:var(--gold);margin-bottom:12px">发起交易</h3>';
-  html += '<div style="margin-bottom:10px"><label style="font-size:.85em;color:var(--muted)">交易对象:</label><br>';
-  html += '<select id="tradeTarget" style="width:100%;padding:8px;margin-top:4px;border-radius:6px;background:rgba(255,255,255,.08);color:#fff;border:1px solid var(--border)">';
+  let html = '<div class="prop-popup"><h3 style="color:var(--gold);margin-bottom:14px">发起交易</h3>';
+  html += '<div style="margin-bottom:12px"><label style="font-size:.85em;color:var(--muted)">交易对象:</label><br>';
+  html += '<select id="tradeTarget" style="width:100%;padding:10px;margin-top:6px;border-radius:8px;background:rgba(255,255,255,.06);color:#fff;border:1px solid var(--glass-b);font-family:inherit">';
   others.forEach(p => html += `<option value="${esc(p.name)}">${esc(p.name)} ($${p.cash})</option>`);
   html += '</select></div>';
 
   // 我方出价
-  html += '<div style="margin-bottom:10px;padding:10px;background:rgba(46,204,113,.08);border-radius:8px"><strong style="font-size:.85em;color:var(--green)">你出价</strong>';
-  html += '<div style="margin-top:6px"><input type="number" id="tradeOfferCash" value="0" min="0" step="10" style="width:100px;padding:4px;border-radius:4px;background:rgba(255,255,255,.06);color:#fff;border:1px solid var(--border);text-align:center"> $</div>';
+  html += '<div style="margin-bottom:12px;padding:12px;background:rgba(0,230,118,.06);border-radius:10px;border:1px solid rgba(0,230,118,.08)"><strong style="font-size:.85em;color:var(--green)">你出价</strong>';
+  html += '<div style="margin-top:8px"><input type="number" id="tradeOfferCash" value="0" min="0" step="10" style="width:110px;padding:6px;border-radius:6px;background:rgba(255,255,255,.04);color:#fff;border:1px solid var(--glass-b);text-align:center;font-family:inherit"> $</div>';
   if (me && me.properties && me.properties.length > 0) {
-    html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px">';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px">';
     me.properties.forEach(pr => {
       if (pr.houses === 0 && !pr.mortgaged) {
-        html += `<label style="font-size:.75em;cursor:pointer"><input type="checkbox" class="trade-offer-prop" value="${pr.index}"> <span style="background:${pr.group_color};padding:1px 5px;border-radius:3px;color:#fff">${esc(pr.name)}</span></label> `;
+        html += `<label style="font-size:.75em;cursor:pointer"><input type="checkbox" class="trade-offer-prop" value="${pr.index}"> <span style="background:${pr.group_color};padding:2px 6px;border-radius:4px;color:#fff">${esc(pr.name)}</span></label> `;
       }
     });
     html += '</div>';
@@ -810,12 +962,12 @@ function showTradePanel() {
   html += '</div>';
 
   // 对方出价
-  html += '<div style="margin-bottom:10px;padding:10px;background:rgba(231,76,60,.08);border-radius:8px"><strong style="font-size:.85em;color:var(--red)">你要对方</strong>';
-  html += '<div style="margin-top:6px"><input type="number" id="tradeReqCash" value="0" min="0" step="10" style="width:100px;padding:4px;border-radius:4px;background:rgba(255,255,255,.06);color:#fff;border:1px solid var(--border);text-align:center"> $</div>';
-  html += '<div id="tradeReqProps" style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px"></div>';
+  html += '<div style="margin-bottom:12px;padding:12px;background:rgba(255,82,82,.06);border-radius:10px;border:1px solid rgba(255,82,82,.08)"><strong style="font-size:.85em;color:var(--red)">你要对方</strong>';
+  html += '<div style="margin-top:8px"><input type="number" id="tradeReqCash" value="0" min="0" step="10" style="width:110px;padding:6px;border-radius:6px;background:rgba(255,255,255,.04);color:#fff;border:1px solid var(--glass-b);text-align:center;font-family:inherit"> $</div>';
+  html += '<div id="tradeReqProps" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px"></div>';
   html += '</div>';
 
-  html += '<div style="display:flex;gap:8px;justify-content:center"><button class="btn btn-green" onclick="sendTrade()">发起交易</button><button class="btn btn-outline" onclick="closeTrade()">取消</button></div></div>';
+  html += '<div style="display:flex;gap:10px;justify-content:center"><button class="btn btn-green" onclick="sendTrade()">发起交易</button><button class="btn btn-outline" onclick="closeTrade()">取消</button></div></div>';
   panel.innerHTML = html;
 
   // 当选择交易对象时更新对方地产列表
@@ -832,7 +984,7 @@ function updateTradeTargetProps() {
     return;
   }
   container.innerHTML = target.properties.filter(pr => pr.houses === 0 && !pr.mortgaged).map(pr =>
-    `<label style="font-size:.75em;cursor:pointer"><input type="checkbox" class="trade-req-prop" value="${pr.index}"> <span style="background:${pr.group_color};padding:1px 5px;border-radius:3px;color:#fff">${esc(pr.name)}</span></label> `
+    `<label style="font-size:.75em;cursor:pointer"><input type="checkbox" class="trade-req-prop" value="${pr.index}"> <span style="background:${pr.group_color};padding:2px 6px;border-radius:4px;color:#fff">${esc(pr.name)}</span></label> `
   ).join('');
 }
 
@@ -888,7 +1040,7 @@ function renderAll(){
 }
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
-function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200);}
+function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
 
 document.getElementById('cName').addEventListener('keydown',e=>{if(e.key==='Enter')createRoom();});
 document.getElementById('jName').addEventListener('keydown',e=>{if(e.key==='Enter')e.target.blur();});
