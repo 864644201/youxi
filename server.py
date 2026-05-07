@@ -12,6 +12,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from games import create_room, GAME_TYPES
 from games.bull_bull import BullBullRoom, BET_MODES, evaluate_hand
+from games.monopoly import MonopolyRoom
+from games.ludo import LudoRoom
 
 app = FastAPI()
 
@@ -209,6 +211,11 @@ async def bull_bull_page():
 @app.get("/monopoly")
 async def monopoly_page():
     return FileResponse(Path(__file__).parent / "static" / "monopoly.html")
+
+
+@app.get("/ludo")
+async def ludo_page():
+    return FileResponse(Path(__file__).parent / "static" / "ludo.html")
 
 
 @app.get("/admin")
@@ -456,7 +463,10 @@ async def websocket_endpoint(ws: WebSocket):
                 room = rooms.get(conn["room"])
                 if not room:
                     continue
-                result = room.roll_dice(conn["name"])
+                if isinstance(room, (MonopolyRoom, LudoRoom)):
+                    result = room.roll_dice(conn["name"])
+                else:
+                    result = {"ok": False, "error": "当前游戏不支持掷骰子"}
                 if result.get("ok"):
                     await broadcast_room(conn["room"])
                 else:
@@ -594,6 +604,25 @@ async def websocket_endpoint(ws: WebSocket):
                     await broadcast_room(conn["room"])
                 else:
                     await ws.send_json({"type": "error", "message": result.get("error", "赎回失败")})
+
+            # ---- 飞行棋特有操作 ----
+
+            elif action == "move_piece":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                if not isinstance(room, LudoRoom):
+                    await ws.send_json({"type": "error", "message": "当前游戏不支持移动棋子"})
+                    continue
+                piece_index = msg.get("piece_index", 0)
+                result = room.move_piece(conn["name"], piece_index)
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": result.get("error", "移动失败")})
 
     except WebSocketDisconnect:
         pass
