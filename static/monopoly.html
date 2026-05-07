@@ -1052,7 +1052,7 @@ function mortgageProp(p){send({action:'mortgage_property',position:p});}
 function unmortgageProp(p){send({action:'unmortgage_property',position:p});}
 function payJailFine(){send({action:'pay_jail_fine'});}
 function useJailCard(){send({action:'use_jail_card'});}
-function bidAuction(){const v=parseInt(document.getElementById('bidAmount').value)||0;send({action:'bid_auction',amount:v});}
+function bidAuction(){const el=document.getElementById('bidAmount');if(!el){toast('出价输入框不存在');return;}const v=parseInt(el.value)||0;if(v<=0){toast('请输入有效金额');return;}send({action:'bid_auction',amount:v});}
 function passAuction(){send({action:'pass_auction'});}
 function sendChat(){const i=document.getElementById('chatIn'),m=i.value.trim();if(!m)return;send({action:'chat',message:m});i.value='';}
 function copyCode(){navigator.clipboard.writeText(roomId).then(()=>toast('已复制!'));}

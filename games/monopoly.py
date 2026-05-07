@@ -645,6 +645,21 @@ class MonopolyRoom(BaseGameRoom):
             return {"ok": False, "error": "没有进行中的拍卖"}
         if name in self.auction["players"]:
             self.auction["players"].remove(name)
+
+        # 如果当前最高出价者放弃，降级为次高出价
+        if self.auction.get("highest_bidder") == name:
+            remaining = self.auction["players"]
+            bids = self.auction.get("bids", {})
+            best_player = None
+            best_amount = 0
+            for p in remaining:
+                b = bids.get(p, 0)
+                if b > best_amount:
+                    best_amount = b
+                    best_player = p
+            self.auction["highest_bidder"] = best_player
+            self.auction["price"] = best_amount
+
         # 检查是否只剩一个出价者
         active_bidders = [p for p in self.auction["players"] if p != self.auction.get("highest_bidder")]
         if len(active_bidders) == 0 or len(self.auction["players"]) <= 1:
