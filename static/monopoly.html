@@ -10,7 +10,7 @@
   --bg:#0f1923;--card:rgba(255,255,255,.06);--card-hover:rgba(255,255,255,.1);
   --border:rgba(255,255,255,.08);--gold:#f0c040;--green:#2ecc71;--red:#e74c3c;
   --blue:#3498db;--text:#e8e8e8;--muted:rgba(255,255,255,.45);
-  --board-bg:#1a5c30;--board-border:#c9a84c;--cell-bg:#f5f0e1;
+  --board-bg:#1c2541;--board-border:#c9a84c;--cell-bg:#f5f0e1;
 }
 body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 .container{max-width:1200px;margin:0 auto;padding:12px}
@@ -86,7 +86,7 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.3)}
 .c.corner{font-size:.6em;font-weight:700;padding:2px;background:linear-gradient(135deg,#f5f0e1,#e8dcc8)}
 .c.corner .c-icon{font-size:1.5em;margin-bottom:1px}
 .c .cbar{width:100%;height:10px;flex-shrink:0}
-.c .cname{font-size:.78em;line-height:1.1;font-weight:600;max-height:2.2em;overflow:hidden}
+.c .cname{font-size:.78em;line-height:1.1;font-weight:600;max-height:2.2em;overflow:hidden;background:rgba(255,255,255,.85);padding:1px 3px;border-radius:3px;width:100%;text-align:center}
 .c .cicon{font-size:1.1em;line-height:1;margin-bottom:0}
 .c .cprice{font-size:.72em;color:#666;margin-top:0}
 .c .chouses{display:flex;gap:1px;position:absolute;top:2px;right:2px}
@@ -94,23 +94,36 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.3)}
 .c .chouses .hotel{background:var(--red);width:8px}
 .c .cowner{position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 3px 3px}
 
-/* 3D Chess Pieces */
+/* 3D Figurine Chess Pieces */
 .c .cpawn{
-  position:absolute;bottom:2px;left:2px;
-  width:16px;height:16px;border-radius:50%;
-  z-index:2;transition:all .4s ease;
-  box-shadow:0 2px 4px rgba(0,0,0,.4),0 1px 0 rgba(255,255,255,.3) inset,0 -2px 4px rgba(0,0,0,.2) inset;
-  border:1.5px solid rgba(255,255,255,.4);
+  position:absolute;bottom:1px;left:2px;
+  width:1.8em;height:2.8em;z-index:2;transition:all .4s ease;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));
 }
-.c .cpawn::after{
-  content:'';position:absolute;top:2px;left:3px;width:6px;height:5px;
-  border-radius:50%;background:rgba(255,255,255,.45);pointer-events:none;
+.c .cpawn .pawn-head{
+  width:1em;height:1em;border-radius:50%;
+  margin:0 auto 0.1em;
+  box-shadow:0 1px 2px rgba(0,0,0,.3),inset 0 -2px 3px rgba(0,0,0,.2),inset 0 2px 3px rgba(255,255,255,.35);
+}
+.c .cpawn .pawn-neck{
+  width:0.5em;height:0.2em;margin:0 auto;
+}
+.c .cpawn .pawn-body{
+  width:1.2em;height:0.9em;margin:0 auto;
+  border-radius:0.15em 0.15em 0.1em 0.1em;
+  box-shadow:0 1px 2px rgba(0,0,0,.3),inset 0 -2px 3px rgba(0,0,0,.15),inset 0 1px 2px rgba(255,255,255,.25);
+}
+.c .cpawn .pawn-base{
+  width:1.5em;height:0.35em;margin:0 auto;
+  border-radius:0.1em 0.1em 0.3em 0.3em;
+  box-shadow:0 2px 3px rgba(0,0,0,.4);
 }
 .c .cmort{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;font-size:1.2em;z-index:1}
 .c.hl{box-shadow:inset 0 0 0 2px var(--gold),0 0 8px rgba(240,192,64,.3)}
+.c.anim-hl{box-shadow:inset 0 0 0 2.5px #ff6b6b,0 0 12px rgba(255,107,107,.4);transform:scale(1.08);z-index:3}
 
 /* ── Center ── */
-.bcenter{position:absolute;top:83px;left:83px;right:83px;bottom:83px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a5c30,#0f3d1e);border-radius:6px;padding:8px;pointer-events:auto;z-index:5;box-shadow:inset 0 0 20px rgba(0,0,0,.2)}
+.bcenter{position:absolute;top:83px;left:83px;right:83px;bottom:83px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#1c2541,#0d1b2a);border-radius:6px;padding:8px;pointer-events:auto;z-index:5;box-shadow:inset 0 0 20px rgba(0,0,0,.2)}
 .bcenter .logo{font-size:1.6em;font-weight:900;color:var(--gold);letter-spacing:3px;text-shadow:0 2px 8px rgba(0,0,0,.3)}
 .bcenter .dice-box{font-size:2.4em;margin:8px 0;min-height:1.2em;transition:all .3s}
 .bcenter .dice-box.rolling{animation:diceroll .5s ease}
@@ -313,6 +326,14 @@ const PE=['🔴','🔵','🟢','🟡','🟣','🟠','🩷','🩵'];
 
 function lighten(hex,pct){const n=parseInt(hex.slice(1),16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;r=Math.min(255,r+Math.round((255-r)*pct/100));g=Math.min(255,g+Math.round((255-g)*pct/100));b=Math.min(255,b+Math.round((255-b)*pct/100));return`rgb(${r},${g},${b})`;}
 function darken(hex,pct){const n=parseInt(hex.slice(1),16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;r=Math.max(0,Math.round(r*(1-pct/100)));g=Math.max(0,Math.round(g*(1-pct/100)));b=Math.max(0,Math.round(b*(1-pct/100)));return`rgb(${r},${g},${b})`;}
+function pawnHtml(name,col,extra=''){
+  const lit=lighten(col,35),dk=darken(col,25),dkr=darken(col,40);
+  return `<span class="cpawn${extra?' '+extra:''}" title="${esc(name)}">`+
+    `<div class="pawn-head" style="background:radial-gradient(circle at 40% 35%,${lit},${col})"></div>`+
+    `<div class="pawn-neck" style="background:${dk}"></div>`+
+    `<div class="pawn-body" style="background:linear-gradient(180deg,${col},${dk})"></div>`+
+    `<div class="pawn-base" style="background:${dkr}"></div></span>`;
+}
 
 const BS=[
 {index:0,type:'go',name:'起点',emoji:'▶️'},
@@ -416,10 +437,10 @@ function renderBoard(s){
   for(let i=0;i<40;i++){const pe=document.getElementById('pw-'+i);if(pe)pe.innerHTML='';}
   if(s.positions)Object.entries(s.positions).forEach(([pos,names])=>{
     const pe=document.getElementById('pw-'+pos);if(!pe)return;
-    pe.innerHTML=names.map(n=>{const i=s.players.findIndex(p=>p.name===n);const col=PC[i%PC.length];return`<span class="cpawn" title="${esc(n)}" style="background:radial-gradient(circle at 35% 35%,${lighten(col,40)},${col} 60%,${darken(col,30)})"></span>`;}).join('');
+    pe.innerHTML=names.map(n=>{const i=s.players.findIndex(p=>p.name===n);const col=PC[i%PC.length];return pawnHtml(n,col);}).join('');
   });
   // highlight
-  document.querySelectorAll('.c.hl').forEach(c=>c.classList.remove('hl'));
+  document.querySelectorAll('.c.hl,.c.anim-hl').forEach(c=>c.classList.remove('hl','anim-hl'));
   if(s.pending_action&&s.pending_action.space!==undefined){
     const c=document.querySelector(`.c[data-idx="${s.pending_action.space}"]`);if(c)c.classList.add('hl');
   }
@@ -430,11 +451,16 @@ function animateMove(path,cb){
   animPath=path;animIdx=0;
   const pe=id=>document.getElementById('pw-'+id);
   function step(){
+    // 清除上一步高亮和棋子
+    document.querySelectorAll('.c.anim-hl').forEach(c=>c.classList.remove('anim-hl'));
     if(animIdx>0){const prev=pe(animPath[animIdx-1]);if(prev)prev.innerHTML='';}
     if(animIdx>=path.length){if(cb)cb();return;}
     const pos=path[animIdx],el=pe(pos);
-    if(el&&gs){const names=gs.positions&&gs.positions[pos]||[];el.innerHTML=names.map(n=>{const i=gs.players.findIndex(p=>p.name===n);const col=PC[i%PC.length];return`<span class="cpawn pawn-bounce" style="background:radial-gradient(circle at 35% 35%,${lighten(col,40)},${col} 60%,${darken(col,30)})"></span>`;}).join('');}
-    animIdx++;setTimeout(step,200);
+    // 高亮当前格
+    const cell=document.querySelector(`.c[data-idx="${pos}"]`);
+    if(cell)cell.classList.add('anim-hl');
+    if(el&&gs){const names=gs.positions&&gs.positions[pos]||[];el.innerHTML=names.map(n=>{const i=gs.players.findIndex(p=>p.name===n);const col=PC[i%PC.length];return pawnHtml(n,col,'pawn-bounce');}).join('');}
+    animIdx++;setTimeout(step,350);
   }
   step();
 }
