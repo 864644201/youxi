@@ -129,6 +129,8 @@ class MonopolyRoom(BaseGameRoom):
         self.events: list[dict] = []
         # 回合阶段: roll -> post_roll -> build -> end
         self.turn_phase = "roll"
+        # 交易系统
+        self.trade: dict | None = None  # 当前活跃交易
         # 上一次移动经过起点
         self.last_passed_go = False
 
@@ -572,6 +574,7 @@ class MonopolyRoom(BaseGameRoom):
         self.doubles_count = 0
         self.pending_action = None
         self.turn_phase = "roll"
+        self.trade = None
         cp = self.current_player
         if cp:
             self._add_event(f"轮到 {cp['name']} 了", "🎲", "turn")
@@ -833,6 +836,7 @@ class MonopolyRoom(BaseGameRoom):
             "events": self.events[-30:],
             "turn_phase": self.turn_phase,
             "chat": self.chat[-20:],
+            "trade": self.trade if self.trade and not self.trade.get("ended") else None,
         }
 
     def admin_get_full_state(self) -> dict:
@@ -841,6 +845,141 @@ class MonopolyRoom(BaseGameRoom):
         state["houses_raw"] = {str(k): v for k, v in self.houses.items()}
         state["mortgaged_raw"] = {str(k): v for k, v in self.mortgaged.items()}
         return state
+
+    def propose_trade(self, proposer: str, target: str, offer: dict, request: dict) -> dict:
+        """发起交易提议
+        offer: {"cash": int, "properties": [int, ...]}
+        request: {"cash": int, "properties": [int, ...]}
+        """
+        cp = self.current_player
+        if not cp or cp["name"] != proposer:
+            return {"ok": False, "error": "不是你的回合"}
+        if proposer == target:
+            return {"ok": False, "error": "不能和自己交易"}
+        if self.trade and not self.trade.get("ended"):
+            return {"ok": False, "error": "已有进行中的交易"}
+        if self.pending_action:
+            return {"ok": False, "error": "请先处理当前操作"}
+
+        target_alive = any(p["name"] == target and p.get("alive", True) for p in self.players)
+        if not target_alive:
+            return {"ok": False, "error": "目标玩家不存在或已破产"}
+
+        offer_cash = offer.get("cash", 0)
+        offer_props = offer.get("properties", [])
+        req_cash = request.get("cash", 0)
+        req_props = request.get("properties", [])
+
+        # 校验现金非负
+        if offer_cash < 0 or req_cash < 0:
+            return {"ok": False, "error": "现金不能为负数"}
+        # 校验非空交易
+        if offer_cash == 0 and not offer_props and req_cash == 0 and not req_props:
+            return {"ok": False, "error": "请至少设置一项交易内容"}
+
+        # 验证 proposer 拥有 offer 的地产
+        for idx in offer_props:
+            if not (0 <= idx < len(BOARD_SPACES)):
+                return {"ok": False, "error": "无效的地产索引"}
+            if self.properties.get(idx) != proposer:
+                return {"ok": False, "error": f"你不拥有 {BOARD_SPACES[idx]['name']}"}
+            if self.houses.get(idx, 0) > 0:
+                return {"ok": False, "error": f"请先拆除 {BOARD_SPACES[idx]['name']} 的房子"}
+
+        # 验证 target 拥有 request 的地产
+        for idx in req_props:
+            if not (0 <= idx < len(BOARD_SPACES)):
+                return {"ok": False, "error": "无效的地产索引"}
+            if self.properties.get(idx) != target:
+                return {"ok": False, "error": f"{target} 不拥有 {BOARD_SPACES[idx]['name']}"}
+            if self.houses.get(idx, 0) > 0:
+                return {"ok": False, "error": f"{target} 的 {BOARD_SPACES[idx]['name']} 还有房子"}
+
+        # 验证现金
+        if offer_cash > self.player_cash.get(proposer, 0):
+            return {"ok": False, "error": "你的现金不足"}
+        if req_cash > self.player_cash.get(target, 0):
+            return {"ok": False, "error": f"{target} 的现金不足"}
+
+        self.trade = {
+            "proposer": proposer,
+            "target": target,
+            "offer": {"cash": offer_cash, "properties": offer_props},
+            "request": {"cash": req_cash, "properties": req_props},
+            "ended": False,
+        }
+
+        offer_desc = []
+        if offer_cash > 0: offer_desc.append(f"${offer_cash}")
+        for idx in offer_props: offer_desc.append(BOARD_SPACES[idx]["name"])
+        req_desc = []
+        if req_cash > 0: req_desc.append(f"${req_cash}")
+        for idx in req_props: req_desc.append(BOARD_SPACES[idx]["name"])
+
+        self._add_event(
+            f"{proposer} 向 {target} 发起交易: {'+'.join(offer_desc) or '无'} ↔ {'+'.join(req_desc) or '无'}",
+            "🤝", "trade"
+        )
+        return {"ok": True, "trade": self.trade}
+
+    def accept_trade(self, name: str) -> dict:
+        if not self.trade or self.trade.get("ended"):
+            return {"ok": False, "error": "没有进行中的交易"}
+        if self.trade["target"] != name:
+            return {"ok": False, "error": "这不是发给你的交易"}
+
+        t = self.trade
+        proposer = t["proposer"]
+        target = t["target"]
+
+        # 再次验证
+        for idx in t["offer"]["properties"]:
+            if self.properties.get(idx) != proposer:
+                self.trade["ended"] = True
+                return {"ok": False, "error": "交易条件已不满足"}
+        for idx in t["request"]["properties"]:
+            if self.properties.get(idx) != target:
+                self.trade["ended"] = True
+                return {"ok": False, "error": "交易条件已不满足"}
+        if t["offer"]["cash"] > self.player_cash.get(proposer, 0):
+            self.trade["ended"] = True
+            return {"ok": False, "error": "对方现金不足"}
+        if t["request"]["cash"] > self.player_cash.get(target, 0):
+            self.trade["ended"] = True
+            return {"ok": False, "error": "你的现金不足"}
+
+        # 执行交易
+        self.player_cash[proposer] -= t["offer"]["cash"]
+        self.player_cash[proposer] += t["request"]["cash"]
+        self.player_cash[target] -= t["request"]["cash"]
+        self.player_cash[target] += t["offer"]["cash"]
+
+        for idx in t["offer"]["properties"]:
+            self.properties[idx] = target
+        for idx in t["request"]["properties"]:
+            self.properties[idx] = proposer
+
+        self.trade["ended"] = True
+        self._add_event(f"{target} 接受了 {proposer} 的交易！🤝", "🤝", "trade")
+        return {"ok": True, "accepted": True}
+
+    def reject_trade(self, name: str) -> dict:
+        if not self.trade or self.trade.get("ended"):
+            return {"ok": False, "error": "没有进行中的交易"}
+        if self.trade["target"] != name:
+            return {"ok": False, "error": "这不是发给你的交易"}
+        self.trade["ended"] = True
+        self._add_event(f"{name} 拒绝了交易", "❌", "trade")
+        return {"ok": True, "rejected": True}
+
+    def cancel_trade(self, name: str) -> dict:
+        if not self.trade or self.trade.get("ended"):
+            return {"ok": False, "error": "没有进行中的交易"}
+        if self.trade["proposer"] != name:
+            return {"ok": False, "error": "只有发起者能取消"}
+        self.trade["ended"] = True
+        self._add_event(f"{name} 取消了交易", "❌", "trade")
+        return {"ok": True, "cancelled": True}
 
     def admin_set_chips(self, target_name: str, chips: int) -> bool:
         if target_name in self.player_cash:
