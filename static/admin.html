@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>牛牛管理后台</title>
+<title>游戏管理后台</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:#0f0f1a; color:#e0e0e0; min-height:100vh; }
@@ -170,7 +170,7 @@ body { font-family:-apple-system,"Microsoft YaHei",sans-serif; background:#0f0f1
 <div class="login-screen" id="loginScreen">
   <div class="login-box">
     <h1>管理后台</h1>
-    <p class="sub">牛牛游戏控制中心</p>
+    <p class="sub">多游戏控制中心</p>
     <input type="text" id="inpUser" placeholder="管理员账号" autocomplete="off">
     <input type="password" id="inpPass" placeholder="密码">
     <button onclick="doLogin()">登录</button>
@@ -267,6 +267,12 @@ const ACTION_NAMES = {
   set_luck: '设置手气', set_card: '改牌', set_chips: '改筹码',
   kick: '踢出', next_round: '下一轮', force_finish: '强制结算',
   delete_room: '删除房间'
+};
+
+const GAME_BADGES = {
+  bull_bull: { name: '牛牛', color: '#e74c3c' },
+  monopoly: { name: '大富翁', color: '#2ecc71' },
+  ludo: { name: '飞行棋', color: '#3498db' },
 };
 
 // ---- WebSocket ----
@@ -405,20 +411,22 @@ function renderOverview() {
     grid.innerHTML = '<div class="empty-state">暂无在线房间</div>';
     return;
   }
-  grid.innerHTML = d.map(r => `
-    <div class="room-card" onclick="enterRoom('${r.room_id}')">
+  grid.innerHTML = d.map(r => {
+    const badge = GAME_BADGES[r.game_type] || { name: r.game_type || '?', color: '#888' };
+    return `<div class="room-card" onclick="enterRoom('${r.room_id}')">
       <div class="rc-actions"><button class="del-btn" onclick="event.stopPropagation();deleteRoom('${r.room_id}')" title="删除房间">&times;</button></div>
       <div class="rc-header">
         <span class="rc-id">${r.room_id}</span>
+        <span style="font-size:.65em;padding:2px 8px;border-radius:6px;background:${badge.color}33;color:${badge.color}">${badge.name}</span>
         <span class="rc-phase phase-${r.phase}">${r.phase_name}</span>
       </div>
       <div class="rc-info">
-        房主: ${esc(r.host)} · ${r.bet_mode} · 第${r.round}轮<br>
-        玩家: ${r.player_count}人 · 奖池: ${r.pot}
+        房主: ${esc(r.host)} · 第${r.round}轮<br>
+        玩家: ${r.player_count}人${r.bet_mode ? ' · ' + r.bet_mode : ''}${r.pot ? ' · 奖池: ' + r.pot : ''}
       </div>
       <div class="rc-players">${r.players.map(p=>`<span class="rc-player-tag">${esc(p)}</span>`).join('')}</div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function enterRoom(rid) {
@@ -452,12 +460,27 @@ function clearAllRooms() {
 function renderDetail() {
   const s = detailState;
   if (!s) return;
+
+  // 根据游戏类型调整动作按钮
+  const actions = document.querySelector('.detail-header .actions');
+  if (s.game_type === 'monopoly' || s.game_type === 'ludo') {
+    actions.innerHTML = `<button class="sb pri" onclick="doNextRound()">下一轮</button>`;
+  } else {
+    actions.innerHTML = `<button class="sb pri" onclick="doNextRound()">下一轮</button><button class="sb" onclick="doForceFinish()">强制结算</button>`;
+  }
+
+  if (s.game_type === 'monopoly') return renderMonopolyDetail(s);
+  if (s.game_type === 'ludo') return renderLudoDetail(s);
+  renderBullBullDetail(s);
+}
+
+function renderBullBullDetail(s) {
   document.getElementById('detailTitle').innerHTML = `房间 ${s.room_id} <span class="rc-phase phase-${s.phase}" style="font-size:.6em;vertical-align:middle">${
     {waiting:'等待中',betting:'下注中',playing:'亮牌中',finished:'已结算'}[s.phase]||s.phase}</span> · ${s.bet_mode_name} · 奖池 ${s.pot}`;
 
   const luckLbl = {'-3':'大衰','-2':'衰','-1':'小衰','0':'平','1':'小旺','2':'旺','3':'大旺'};
   document.getElementById('playersGrid').innerHTML = s.players.map((p,pi) => {
-    const cards = p.hand.length > 0
+    const cards = p.hand && p.hand.length > 0
       ? p.hand.map((c,ci) => `<div class="ec ${c.color}" onclick="openPicker('${esc(p.name)}',${ci})" title="点击换牌"><span class="rk">${c.rank}</span><span class="st">${c.symbol}</span></div>`).join('')
       : '<div style="opacity:.25;font-size:.8em">未发牌</div>';
     const res = p.result ? `<div class="p-result">${esc(p.result.display)}</div>` : '';
@@ -472,6 +495,56 @@ function renderDetail() {
         }).join('')}</div>
         <div class="cg"><label>筹码:</label><input type="number" class="ci" id="ci${pi}" value="${p.chips}" min="0"><button class="sb" onclick="setChips('${esc(p.name)}',document.getElementById('ci${pi}').value)">改</button></div>
         ${p.name!==s.host?`<button class="sb dan" onclick="kickP('${esc(p.name)}')">踢出</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderMonopolyDetail(s) {
+  document.getElementById('detailTitle').innerHTML = `房间 ${s.room_id} <span class="rc-phase phase-${s.phase}" style="font-size:.6em;vertical-align:middle">${
+    {waiting:'等待中',playing:'游戏中',finished:'已结束'}[s.phase]||s.phase}</span> · 大富翁`;
+
+  document.getElementById('playersGrid').innerHTML = s.players.map((p, pi) => {
+    const props = (p.properties || []).map(pr =>
+      `<span style="display:inline-block;padding:1px 5px;border-radius:3px;font-size:.65em;background:${pr.group_color || '#666'};color:#fff;margin:1px">${esc(pr.name)}${pr.houses > 0 ? ' ' + pr.houses + '🏠' : ''}${pr.mortgaged ? ' 💤' : ''}</span>`
+    ).join('');
+    const tags = [p.name === s.host ? '<span class="p-tag">房主</span>' : '', p.in_jail ? '<span class="p-tag" style="color:#e74c3c">监狱</span>' : '', !p.alive ? '<span class="p-tag" style="color:#888">破产</span>' : ''].filter(Boolean).join('');
+    return `<div class="p-card${!p.alive ? ' folded' : ''}">
+      <div class="p-head"><span class="p-name">${esc(p.name)}${tags}</span><span class="p-chips">💰 $${p.cash}</span></div>
+      <div style="font-size:.75em;opacity:.5;margin-bottom:6px">总资产 $${p.total_asset} · 位置 ${p.position}</div>
+      <div style="margin-bottom:6px">${props || '<span style="opacity:.3;font-size:.8em">无地产</span>'}</div>
+      <div class="p-controls">
+        <div class="cg"><label>现金:</label><input type="number" class="ci" id="ci${pi}" value="${p.cash}" min="0"><button class="sb" onclick="setChips('${esc(p.name)}',document.getElementById('ci${pi}').value)">改</button></div>
+        ${p.name !== s.host ? `<button class="sb dan" onclick="kickP('${esc(p.name)}')">踢出</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+const LUDO_COLORS = { blue: '#3498db', yellow: '#f0c040', green: '#2ecc71', red: '#e74c3c' };
+const LUDO_NAMES = { blue: '蓝', yellow: '黄', green: '绿', red: '红' };
+
+function renderLudoDetail(s) {
+  document.getElementById('detailTitle').innerHTML = `房间 ${s.room_id} <span class="rc-phase phase-${s.phase}" style="font-size:.6em;vertical-align:middle">${
+    {waiting:'等待中',playing:'游戏中',finished:'已结束'}[s.phase]||s.phase}</span> · 飞行棋`;
+
+  document.getElementById('playersGrid').innerHTML = s.players.map(p => {
+    const col = LUDO_COLORS[p.color] || '#888';
+    const colName = LUDO_NAMES[p.color] || p.color || '?';
+    const pieces = (p.pieces || []).map((pos, i) => {
+      let label = '';
+      if (pos === -2) label = '✅';
+      else if (pos === -1) label = '🏠';
+      else if (pos >= 52) label = `冲${pos - 51}`;
+      else label = `格${pos}`;
+      return `<span style="font-size:.7em;padding:2px 5px;background:rgba(255,255,255,.05);border-radius:4px;margin:1px;display:inline-block">✈${i+1}: ${label}</span>`;
+    }).join('');
+    const tags = [p.name === s.host ? '<span class="p-tag">房主</span>' : '', !p.alive ? '<span class="p-tag" style="color:#888">淘汰</span>' : ''].filter(Boolean).join('');
+    return `<div class="p-card${!p.alive ? ' folded' : ''}">
+      <div class="p-head"><span class="p-name"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col}"></span> ${esc(p.name)}${tags} (${colName}方)</span><span style="font-size:.8em">完成: ${p.finished}/4</span></div>
+      <div style="margin:6px 0">${pieces}</div>
+      <div class="p-controls">
+        ${p.name !== s.host ? `<button class="sb dan" onclick="kickP('${esc(p.name)}')">踢出</button>` : ''}
       </div>
     </div>`;
   }).join('');

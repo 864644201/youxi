@@ -10,7 +10,7 @@
   --bg:#0f1923;--card:rgba(255,255,255,.06);--card-hover:rgba(255,255,255,.1);
   --border:rgba(255,255,255,.08);--gold:#f0c040;--green:#2ecc71;--red:#e74c3c;
   --blue:#3498db;--text:#e8e8e8;--muted:rgba(255,255,255,.45);
-  --board-bg:#1a472a;--board-border:#2d6b3f;--cell-bg:#e8ebe4;
+  --board-bg:#1a5c30;--board-border:#c9a84c;--cell-bg:#f5f0e1;
 }
 body{font-family:-apple-system,"Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 .container{max-width:1200px;margin:0 auto;padding:12px}
@@ -75,28 +75,42 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.3)}
   display:grid;
   grid-template-columns:80px repeat(9,56px) 80px;
   grid-template-rows:80px repeat(9,56px) 80px;
-  gap:1.5px;background:var(--board-bg);border:3px solid var(--board-border);
-  border-radius:8px;position:relative;
-  box-shadow:0 4px 24px rgba(0,0,0,.4);
+  gap:2px;background:var(--board-bg);border:4px solid var(--board-border);
+  border-radius:10px;position:relative;
+  box-shadow:0 0 0 2px #8b6914,0 0 0 6px var(--board-border),0 8px 32px rgba(0,0,0,.5),inset 0 0 40px rgba(0,0,0,.15);
+  background-image:radial-gradient(ellipse at 30% 40%,rgba(255,255,255,.04) 0%,transparent 60%),radial-gradient(ellipse at 70% 60%,rgba(0,0,0,.08) 0%,transparent 50%);
 }
 
 /* ── Cells ── */
-.c{background:var(--cell-bg);border-radius:3px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.52em;color:#222;text-align:center;padding:1px;overflow:hidden;transition:box-shadow .3s,transform .15s}
-.c.corner{font-size:.6em;font-weight:700;padding:2px}
+.c{background:var(--cell-bg);border-radius:3px;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.52em;color:#222;text-align:center;padding:1px;overflow:hidden;transition:box-shadow .3s,transform .15s;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(0,0,0,.08)}
+.c.corner{font-size:.6em;font-weight:700;padding:2px;background:linear-gradient(135deg,#f5f0e1,#e8dcc8)}
 .c.corner .c-icon{font-size:1.5em;margin-bottom:1px}
 .c .cbar{width:100%;height:10px;flex-shrink:0}
-.c .cname{font-size:.82em;line-height:1.1;font-weight:600;max-height:2em;overflow:hidden}
+.c .cname{font-size:.78em;line-height:1.1;font-weight:600;max-height:2.2em;overflow:hidden}
+.c .cicon{font-size:1.1em;line-height:1;margin-bottom:0}
 .c .cprice{font-size:.72em;color:#666;margin-top:0}
 .c .chouses{display:flex;gap:1px;position:absolute;top:2px;right:2px}
-.c .chouses .hh{width:6px;height:6px;border-radius:1px;background:var(--green)}
+.c .chouses .hh{width:6px;height:6px;border-radius:1px;background:var(--green);box-shadow:0 1px 2px rgba(0,0,0,.2)}
 .c .chouses .hotel{background:var(--red);width:8px}
 .c .cowner{position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 3px 3px}
-.c .cpawn{position:absolute;bottom:1px;left:1px;font-size:.85em;z-index:2;transition:all .4s ease}
+
+/* 3D Chess Pieces */
+.c .cpawn{
+  position:absolute;bottom:2px;left:2px;
+  width:16px;height:16px;border-radius:50%;
+  z-index:2;transition:all .4s ease;
+  box-shadow:0 2px 4px rgba(0,0,0,.4),0 1px 0 rgba(255,255,255,.3) inset,0 -2px 4px rgba(0,0,0,.2) inset;
+  border:1.5px solid rgba(255,255,255,.4);
+}
+.c .cpawn::after{
+  content:'';position:absolute;top:2px;left:3px;width:6px;height:5px;
+  border-radius:50%;background:rgba(255,255,255,.45);pointer-events:none;
+}
 .c .cmort{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;font-size:1.2em;z-index:1}
 .c.hl{box-shadow:inset 0 0 0 2px var(--gold),0 0 8px rgba(240,192,64,.3)}
 
 /* ── Center ── */
-.bcenter{position:absolute;top:81.5px;left:81.5px;right:81.5px;bottom:81.5px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a472a,#143820);border-radius:4px;padding:8px;pointer-events:auto;z-index:5}
+.bcenter{position:absolute;top:83px;left:83px;right:83px;bottom:83px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#1a5c30,#0f3d1e);border-radius:6px;padding:8px;pointer-events:auto;z-index:5;box-shadow:inset 0 0 20px rgba(0,0,0,.2)}
 .bcenter .logo{font-size:1.6em;font-weight:900;color:var(--gold);letter-spacing:3px;text-shadow:0 2px 8px rgba(0,0,0,.3)}
 .bcenter .dice-box{font-size:2.4em;margin:8px 0;min-height:1.2em;transition:all .3s}
 .bcenter .dice-box.rolling{animation:diceroll .5s ease}
@@ -185,13 +199,13 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.3)}
 .conn.ok{background:rgba(46,204,113,.25)}.conn.fail{background:rgba(231,76,60,.25)}
 
 /* ── Pawn bounce ── */
-@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 .pawn-bounce{animation:bounce .4s ease 2}
 
 /* ── Responsive ── */
 @media(max-width:920px){
   .board{grid-template-columns:54px repeat(9,40px) 54px;grid-template-rows:54px repeat(9,40px) 54px}
-  .bcenter{top:55.5px;left:55.5px;right:55.5px;bottom:55.5px}
+  .bcenter{top:58px;left:58px;right:58px;bottom:58px}
   .side{width:100%;flex-direction:row;flex-wrap:wrap;max-height:none}
   .side .pc{flex:1;min-width:130px}
   .layout{flex-direction:column;align-items:center}
@@ -200,7 +214,7 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.3)}
 @media(max-width:600px){
   .container{padding:6px}
   .board{grid-template-columns:42px repeat(9,32px) 42px;grid-template-rows:42px repeat(9,32px) 42px}
-  .bcenter{top:43.5px;left:43.5px;right:43.5px;bottom:43.5px}
+  .bcenter{top:46px;left:46px;right:46px;bottom:46px}
   .c{font-size:.32em;padding:0}.c .cbar{height:5px}.c.corner{font-size:.38em}.c.corner .c-icon{font-size:1em}
   .bcenter .logo{font-size:1em;letter-spacing:1px}.bcenter .dice-box{font-size:1.6em}
   .bcenter .prompt{font-size:.65em}
@@ -297,47 +311,50 @@ const RI=2000,MW=60000;let rstart=0;
 const PC=['#e74c3c','#3498db','#2ecc71','#f0c040','#9b59b6','#e67e22','#1abc9c','#fd79a8'];
 const PE=['🔴','🔵','🟢','🟡','🟣','🟠','🩷','🩵'];
 
+function lighten(hex,pct){const n=parseInt(hex.slice(1),16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;r=Math.min(255,r+Math.round((255-r)*pct/100));g=Math.min(255,g+Math.round((255-g)*pct/100));b=Math.min(255,b+Math.round((255-b)*pct/100));return`rgb(${r},${g},${b})`;}
+function darken(hex,pct){const n=parseInt(hex.slice(1),16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;r=Math.max(0,Math.round(r*(1-pct/100)));g=Math.max(0,Math.round(g*(1-pct/100)));b=Math.max(0,Math.round(b*(1-pct/100)));return`rgb(${r},${g},${b})`;}
+
 const BS=[
-{index:0,type:'go',name:'起点',emoji:'▶'},
-{index:1,type:'property',name:'地中海大道',group:'brown',price:60,rent:[2,10,30,90,160,250],houseCost:50,mortgage:30},
+{index:0,type:'go',name:'起点',emoji:'▶️'},
+{index:1,type:'property',name:'地中海大道',group:'brown',price:60,rent:[2,10,30,90,160,250],houseCost:50,mortgage:30,icon:'🏛️'},
 {index:2,type:'community_chest',name:'公益金',emoji:'📦'},
-{index:3,type:'property',name:'巴尔的摩大道',group:'brown',price:60,rent:[4,20,60,180,320,450],houseCost:50,mortgage:30},
+{index:3,type:'property',name:'巴尔的摩大道',group:'brown',price:60,rent:[4,20,60,180,320,450],houseCost:50,mortgage:30,icon:'🏘️'},
 {index:4,type:'tax',name:'所得税',amount:200,emoji:'💰'},
-{index:5,type:'railroad',name:'阅读铁路',price:200,emoji:'🚂',mortgage:100},
-{index:6,type:'property',name:'东方大道',group:'lightblue',price:100,rent:[6,30,90,270,400,550],houseCost:50,mortgage:50},
+{index:5,type:'railroad',name:'阅读铁路',price:200,emoji:'🚂',mortgage:100,icon:'🚂'},
+{index:6,type:'property',name:'东方大道',group:'lightblue',price:100,rent:[6,30,90,270,400,550],houseCost:50,mortgage:50,icon:'🏯'},
 {index:7,type:'chance',name:'机会',emoji:'❓'},
-{index:8,type:'property',name:'佛蒙特大道',group:'lightblue',price:100,rent:[6,30,90,270,400,550],houseCost:50,mortgage:50},
-{index:9,type:'property',name:'康涅狄格大道',group:'lightblue',price:120,rent:[8,40,100,300,450,600],houseCost:50,mortgage:60},
+{index:8,type:'property',name:'佛蒙特大道',group:'lightblue',price:100,rent:[6,30,90,270,400,550],houseCost:50,mortgage:50,icon:'🌲'},
+{index:9,type:'property',name:'康涅狄格大道',group:'lightblue',price:120,rent:[8,40,100,300,450,600],houseCost:50,mortgage:60,icon:'🏡'},
 {index:10,type:'jail',name:'监狱',emoji:'🔒'},
-{index:11,type:'property',name:'圣查尔斯广场',group:'pink',price:140,rent:[10,50,150,450,625,750],houseCost:100,mortgage:70},
-{index:12,type:'utility',name:'电力公司',price:150,emoji:'💡',mortgage:75},
-{index:13,type:'property',name:'弗吉尼亚大道',group:'pink',price:140,rent:[10,50,150,450,625,750],houseCost:100,mortgage:70},
-{index:14,type:'property',name:'州际大道',group:'pink',price:160,rent:[12,60,180,500,700,900],houseCost:100,mortgage:80},
-{index:15,type:'railroad',name:'宾夕法尼亚铁路',price:200,emoji:'🚂',mortgage:100},
-{index:16,type:'property',name:'圣詹姆斯广场',group:'orange',price:180,rent:[14,70,200,550,750,950],houseCost:100,mortgage:90},
+{index:11,type:'property',name:'圣查尔斯广场',group:'pink',price:140,rent:[10,50,150,450,625,750],houseCost:100,mortgage:70,icon:'⛪'},
+{index:12,type:'utility',name:'电力公司',price:150,emoji:'💡',mortgage:75,icon:'💡'},
+{index:13,type:'property',name:'弗吉尼亚大道',group:'pink',price:140,rent:[10,50,150,450,625,750],houseCost:100,mortgage:70,icon:'🏫'},
+{index:14,type:'property',name:'州际大道',group:'pink',price:160,rent:[12,60,180,500,700,900],houseCost:100,mortgage:80,icon:'🛣️'},
+{index:15,type:'railroad',name:'宾夕法尼亚铁路',price:200,emoji:'🚂',mortgage:100,icon:'🚂'},
+{index:16,type:'property',name:'圣詹姆斯广场',group:'orange',price:180,rent:[14,70,200,550,750,950],houseCost:100,mortgage:90,icon:'🎭'},
 {index:17,type:'community_chest',name:'公益金',emoji:'📦'},
-{index:18,type:'property',name:'田纳西大道',group:'orange',price:180,rent:[14,70,200,550,750,950],houseCost:100,mortgage:90},
-{index:19,type:'property',name:'纽约大道',group:'orange',price:200,rent:[16,80,220,600,800,1000],houseCost:100,mortgage:100},
+{index:18,type:'property',name:'田纳西大道',group:'orange',price:180,rent:[14,70,200,550,750,950],houseCost:100,mortgage:90,icon:'🎵'},
+{index:19,type:'property',name:'纽约大道',group:'orange',price:200,rent:[16,80,220,600,800,1000],houseCost:100,mortgage:100,icon:'🗽'},
 {index:20,type:'free_parking',name:'免费停车',emoji:'🅿️'},
-{index:21,type:'property',name:'肯塔基大道',group:'red',price:220,rent:[18,90,250,700,875,1050],houseCost:150,mortgage:110},
+{index:21,type:'property',name:'肯塔基大道',group:'red',price:220,rent:[18,90,250,700,875,1050],houseCost:150,mortgage:110,icon:'🐎'},
 {index:22,type:'chance',name:'机会',emoji:'❓'},
-{index:23,type:'property',name:'印第安纳大道',group:'red',price:220,rent:[18,90,250,700,875,1050],houseCost:150,mortgage:110},
-{index:24,type:'property',name:'伊利诺伊大道',group:'red',price:240,rent:[20,100,300,750,925,1100],houseCost:150,mortgage:120},
-{index:25,type:'railroad',name:'B&O铁路',price:200,emoji:'🚂',mortgage:100},
-{index:26,type:'property',name:'大西洋大道',group:'yellow',price:260,rent:[22,110,330,800,975,1150],houseCost:150,mortgage:130},
-{index:27,type:'property',name:'文特诺大道',group:'yellow',price:260,rent:[22,110,330,800,975,1150],houseCost:150,mortgage:130},
-{index:28,type:'utility',name:'自来水公司',price:150,emoji:'🚰',mortgage:75},
-{index:29,type:'property',name:'马文花园',group:'yellow',price:280,rent:[24,120,360,850,1025,1200],houseCost:150,mortgage:140},
+{index:23,type:'property',name:'印第安纳大道',group:'red',price:220,rent:[18,90,250,700,875,1050],houseCost:150,mortgage:110,icon:'🌽'},
+{index:24,type:'property',name:'伊利诺伊大道',group:'red',price:240,rent:[20,100,300,750,925,1100],houseCost:150,mortgage:120,icon:'🏙️'},
+{index:25,type:'railroad',name:'B&O铁路',price:200,emoji:'🚂',mortgage:100,icon:'🚂'},
+{index:26,type:'property',name:'大西洋大道',group:'yellow',price:260,rent:[22,110,330,800,975,1150],houseCost:150,mortgage:130,icon:'🌊'},
+{index:27,type:'property',name:'文特诺大道',group:'yellow',price:260,rent:[22,110,330,800,975,1150],houseCost:150,mortgage:130,icon:'🏖️'},
+{index:28,type:'utility',name:'自来水公司',price:150,emoji:'🚰',mortgage:75,icon:'🚰'},
+{index:29,type:'property',name:'马文花园',group:'yellow',price:280,rent:[24,120,360,850,1025,1200],houseCost:150,mortgage:140,icon:'🌻'},
 {index:30,type:'go_to_jail',name:'进监狱',emoji:'🚔'},
-{index:31,type:'property',name:'太平洋大道',group:'green',price:300,rent:[26,130,390,900,1100,1275],houseCost:200,mortgage:150},
-{index:32,type:'property',name:'北卡罗来纳大道',group:'green',price:300,rent:[26,130,390,900,1100,1275],houseCost:200,mortgage:150},
+{index:31,type:'property',name:'太平洋大道',group:'green',price:300,rent:[26,130,390,900,1100,1275],houseCost:200,mortgage:150,icon:'🌴'},
+{index:32,type:'property',name:'北卡罗来纳大道',group:'green',price:300,rent:[26,130,390,900,1100,1275],houseCost:200,mortgage:150,icon:'🏔️'},
 {index:33,type:'community_chest',name:'公益金',emoji:'📦'},
-{index:34,type:'property',name:'宾夕法尼亚大道',group:'green',price:320,rent:[28,150,450,1000,1200,1400],houseCost:200,mortgage:160},
-{index:35,type:'railroad',name:'短途铁路',price:200,emoji:'🚂',mortgage:100},
+{index:34,type:'property',name:'宾夕法尼亚大道',group:'green',price:320,rent:[28,150,450,1000,1200,1400],houseCost:200,mortgage:160,icon:'🏛️'},
+{index:35,type:'railroad',name:'短途铁路',price:200,emoji:'🚂',mortgage:100,icon:'🚂'},
 {index:36,type:'chance',name:'机会',emoji:'❓'},
-{index:37,type:'property',name:'公园广场',group:'darkblue',price:350,rent:[35,175,500,1100,1300,1500],houseCost:200,mortgage:175},
+{index:37,type:'property',name:'公园广场',group:'darkblue',price:350,rent:[35,175,500,1100,1300,1500],houseCost:200,mortgage:175,icon:'🌳'},
 {index:38,type:'tax',name:'奢侈税',amount:100,emoji:'💎'},
-{index:39,type:'property',name:'海滨大道',group:'darkblue',price:400,rent:[50,200,600,1400,1700,2000],houseCost:200,mortgage:200},
+{index:39,type:'property',name:'海滨大道',group:'darkblue',price:400,rent:[50,200,600,1400,1700,2000],houseCost:200,mortgage:200,icon:'🏰'},
 ];
 
 const CG={brown:{c:'#8B4513',n:'棕'},lightblue:{c:'#87CEEB',n:'浅蓝'},pink:{c:'#FF69B4',n:'粉'},orange:{c:'#FFA500',n:'橙'},red:{c:'#FF0000',n:'红'},yellow:{c:'#FFD700',n:'黄'},green:{c:'#228B22',n:'绿'},darkblue:{c:'#00008B',n:'深蓝'}};
@@ -367,15 +384,15 @@ function mc(i){
   const s=BS[i],[r,c]=gp(i),d=document.createElement('div');
   d.className='c '+s.type;d.style.gridRow=r+1;d.style.gridColumn=c+1;d.dataset.idx=i;
   let h='';
-  if(s.type==='property'){const g=CG[s.group]||{c:'#888'};h+=`<div class="cbar" style="background:${g.c}"></div>`;h+=`<div class="cname">${s.name}</div>`;h+=`<div class="cprice">$${s.price}</div>`;}
-  else if(s.type==='railroad'){h+=`<div class="cname">🚂</div><div class="cname" style="font-size:.7em">${s.name}</div><div class="cprice">$${s.price}</div>`;}
-  else if(s.type==='utility'){h+=`<div class="cname">${s.emoji}</div><div class="cname" style="font-size:.7em">${s.name}</div><div class="cprice">$${s.price}</div>`;}
-  else if(s.type==='chance')h+=`<div class="cname" style="color:#d4a017">❓</div><div class="cname">机会</div>`;
-  else if(s.type==='community_chest')h+=`<div class="cname" style="color:#1a6fa0">📦</div><div class="cname">公益金</div>`;
-  else if(s.type==='tax')h+=`<div class="cname">${s.emoji}</div><div class="cname">${s.name}</div><div class="cprice">$${s.amount}</div>`;
-  else if(s.type==='jail')h+=`<div class="cname">🔒</div><div class="cname">监狱</div>`;
-  else if(s.type==='free_parking')h+=`<div class="cname">🅿️</div><div class="cname">免费停车</div>`;
-  else if(s.type==='go_to_jail')h+=`<div class="cname">🚔</div><div class="cname">进监狱</div>`;
+  if(s.type==='property'){const g=CG[s.group]||{c:'#888'};h+=`<div class="cbar" style="background:${g.c}"></div>`;h+=`<div class="cicon">${s.icon||''}</div>`;h+=`<div class="cname">${s.name}</div>`;h+=`<div class="cprice">$${s.price}</div>`;}
+  else if(s.type==='railroad'){h+=`<div class="cicon">${s.icon||'🚂'}</div><div class="cname" style="font-size:.7em">${s.name}</div><div class="cprice">$${s.price}</div>`;}
+  else if(s.type==='utility'){h+=`<div class="cicon">${s.icon||s.emoji}</div><div class="cname" style="font-size:.7em">${s.name}</div><div class="cprice">$${s.price}</div>`;}
+  else if(s.type==='chance')h+=`<div class="cicon" style="color:#d4a017">❓</div><div class="cname">机会</div>`;
+  else if(s.type==='community_chest')h+=`<div class="cicon" style="color:#1a6fa0">📦</div><div class="cname">公益金</div>`;
+  else if(s.type==='tax')h+=`<div class="cicon">${s.emoji}</div><div class="cname">${s.name}</div><div class="cprice">$${s.amount}</div>`;
+  else if(s.type==='jail')h+=`<div class="cicon">🔒</div><div class="cname">监狱</div>`;
+  else if(s.type==='free_parking')h+=`<div class="cicon">🅿️</div><div class="cname">免费停车</div>`;
+  else if(s.type==='go_to_jail')h+=`<div class="cicon">🚔</div><div class="cname">进监狱</div>`;
   h+=`<div class="chouses" id="ch-${i}"></div>`;
   h+=`<div class="cowner" id="co-${i}"></div>`;
   h+=`<div id="pw-${i}"></div>`;
@@ -395,11 +412,11 @@ function renderBoard(s){
     const cell=document.querySelector(`.c[data-idx="${b.index}"]`);
     if(cell){let mo=cell.querySelector('.cmort');if(b.mortgaged){if(!mo){mo=document.createElement('div');mo.className='cmort';mo.textContent='💤';cell.appendChild(mo);}}else if(mo)mo.remove();}
   });
-  // pawns
+  // pawns (3D CSS pieces)
   for(let i=0;i<40;i++){const pe=document.getElementById('pw-'+i);if(pe)pe.innerHTML='';}
   if(s.positions)Object.entries(s.positions).forEach(([pos,names])=>{
     const pe=document.getElementById('pw-'+pos);if(!pe)return;
-    pe.innerHTML=names.map(n=>{const i=s.players.findIndex(p=>p.name===n);return`<span class="cpawn" title="${n}">${PE[i%PE.length]}</span>`;}).join('');
+    pe.innerHTML=names.map(n=>{const i=s.players.findIndex(p=>p.name===n);const col=PC[i%PC.length];return`<span class="cpawn" title="${esc(n)}" style="background:radial-gradient(circle at 35% 35%,${lighten(col,40)},${col} 60%,${darken(col,30)})"></span>`;}).join('');
   });
   // highlight
   document.querySelectorAll('.c.hl').forEach(c=>c.classList.remove('hl'));
@@ -416,7 +433,7 @@ function animateMove(path,cb){
     if(animIdx>0){const prev=pe(animPath[animIdx-1]);if(prev)prev.innerHTML='';}
     if(animIdx>=path.length){if(cb)cb();return;}
     const pos=path[animIdx],el=pe(pos);
-    if(el&&gs){const names=gs.positions&&gs.positions[pos]||[];el.innerHTML=names.map(n=>{const i=gs.players.findIndex(p=>p.name===n);return`<span class="cpawn pawn-bounce">${PE[i%PE.length]}</span>`;}).join('');}
+    if(el&&gs){const names=gs.positions&&gs.positions[pos]||[];el.innerHTML=names.map(n=>{const i=gs.players.findIndex(p=>p.name===n);const col=PC[i%PC.length];return`<span class="cpawn pawn-bounce" style="background:radial-gradient(circle at 35% 35%,${lighten(col,40)},${col} 60%,${darken(col,30)})"></span>`;}).join('');}
     animIdx++;setTimeout(step,200);
   }
   step();

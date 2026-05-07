@@ -597,7 +597,10 @@ class MonopolyRoom(BaseGameRoom):
         sp = BOARD_SPACES[pos]
         self._add_event(f"{name} 购买了 {sp['name']}，花费 ${price}", "🏠", "buy")
         self.pending_action = None
-        self._next_turn()
+        if self.doubles_count > 0:
+            self.turn_phase = "roll"
+        else:
+            self._next_turn()
         return {"ok": True, "position": pos, "price": price}
 
     def skip_buy(self, name: str) -> dict:
@@ -617,6 +620,7 @@ class MonopolyRoom(BaseGameRoom):
             "bids": {},
             "players": [p["name"] for p in self.players if p.get("alive", True) and p["name"] != name],
             "ended": False,
+            "from_doubles": self.doubles_count > 0,
         }
         self.pending_action = {"type": "auction", "space": pos}
         return {"ok": True, "auction_started": True, "space": pos}
@@ -652,6 +656,7 @@ class MonopolyRoom(BaseGameRoom):
         winner = self.auction.get("highest_bidder")
         price = self.auction.get("price", 0)
         pos = self.auction["space"]
+        from_doubles = self.auction.get("from_doubles", False)
         sp = BOARD_SPACES[pos]
         if winner and price > 0:
             self.player_cash[winner] -= price
@@ -663,7 +668,10 @@ class MonopolyRoom(BaseGameRoom):
             self._add_event(f"{sp['name']} 流拍", "🔨", "auction")
         self.auction = None
         self.pending_action = None
-        self._next_turn()
+        if from_doubles:
+            self.turn_phase = "roll"
+        else:
+            self._next_turn()
         return {"ok": True, "auction_ended": True, "winner": winner, "price": price}
 
     def buy_house(self, name: str, position: int) -> dict:
