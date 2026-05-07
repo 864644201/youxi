@@ -4,6 +4,7 @@ import uuid
 import socket
 import os
 import time
+import hashlib
 import sqlite3
 from pathlib import Path
 from datetime import datetime
@@ -64,6 +65,14 @@ def _init_db():
         last_seen TEXT DEFAULT (datetime('now','localtime')),
         PRIMARY KEY (name, room_id)
     )""")
+    c.execute("""CREATE TABLE IF NOT EXISTS users (
+        name TEXT PRIMARY KEY,
+        password_hash TEXT,
+        created_at TEXT DEFAULT (datetime('now','localtime')),
+        last_login TEXT DEFAULT (datetime('now','localtime')),
+        total_games INTEGER DEFAULT 0,
+        total_wins INTEGER DEFAULT 0
+    )""")
     conn.commit()
     conn.close()
 
@@ -90,6 +99,10 @@ def _db_fetch(query: str, params: tuple = (), fetchall: bool = True):
         return result
     except Exception:
         return [] if fetchall else None
+
+
+def _hash_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
 
 
 def log_admin_action(action: str, room_id: str = "", target: str = "", detail: dict = None):
@@ -127,6 +140,14 @@ def log_game_result(room, winner_name: str):
                    WHERE name = ? AND room_id = ?""",
                 (p["name"], room.room_id)
             )
+    for p in room.players:
+        _db_execute(
+            """UPDATE users SET total_games = total_games + 1, last_login = datetime('now','localtime')
+               WHERE name = ?""",
+            (p["name"],)
+        )
+        if p["name"] == winner_name:
+            _db_execute("UPDATE users SET total_wins = total_wins + 1 WHERE name = ?", (p["name"],))
 
 
 _init_db()
@@ -156,6 +177,16 @@ async def broadcast_room(room_id: str):
             await conn["ws"].send_json({"type": "game_state", "data": state})
         except Exception:
             pass
+    # 游戏结束时记录结果
+    if room.phase == "finished" and not getattr(room, '_result_logged', False):
+        winner = None
+        for p in room.players:
+            if p.get("alive", True):
+                winner = p["name"]
+                break
+        if winner:
+            log_game_result(room, winner)
+        room._result_logged = True
     await broadcast_admin()
 
 
@@ -253,6 +284,45 @@ async def list_rooms():
 @app.get("/api/game-types")
 async def game_types():
     return {"types": {k: {"name": v["name"], "min_players": v["min_players"], "max_players": v["max_players"]} for k, v in GAME_TYPES.items()}}
+
+
+@app.post("/api/register")
+async def api_register(req: dict):
+    name = req.get("name", "").strip()
+    password = req.get("password", "").strip()
+    if not name or len(name) > 12:
+        return {"ok": False, "error": "昵称需1-12个字符"}
+    if not password or len(password) < 4:
+        return {"ok": False, "error": "密码至少4个字符"}
+    existing = _db_fetch("SELECT name FROM users WHERE name = ?", (name,), fetchall=False)
+    if existing:
+        return {"ok": False, "error": "昵称已被注册"}
+    _db_execute("INSERT INTO users (name, password_hash) VALUES (?, ?)", (name, _hash_password(password)))
+    return {"ok": True, "name": name}
+
+
+@app.post("/api/login")
+async def api_login(req: dict):
+    name = req.get("name", "").strip()
+    password = req.get("password", "").strip()
+    user = _db_fetch("SELECT * FROM users WHERE name = ?", (name,), fetchall=False)
+    if not user:
+        return {"ok": False, "error": "用户不存在"}
+    if user["password_hash"] != _hash_password(password):
+        return {"ok": False, "error": "密码错误"}
+    _db_execute("UPDATE users SET last_login = datetime('now','localtime') WHERE name = ?", (name,))
+    return {"ok": True, "name": name}
+
+
+@app.get("/api/leaderboard")
+async def api_leaderboard():
+    rows = _db_fetch(
+        """SELECT name, total_games, total_wins,
+           CASE WHEN total_games > 0 THEN ROUND(CAST(total_wins AS FLOAT) / total_games * 100, 1) ELSE 0 END as win_rate
+           FROM users WHERE total_games > 0
+           ORDER BY total_wins DESC, win_rate DESC LIMIT 20"""
+    )
+    return {"leaderboard": [dict(r) for r in (rows or [])]}
 
 
 @app.websocket("/ws")

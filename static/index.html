@@ -117,6 +117,19 @@ body {
       <strong>欢迎!</strong> 选择下面的游戏创建房间，把地址发给局域网里的朋友即可一起玩。
     </div>
 
+    <div class="user-bar" id="userBar" style="text-align:center;margin-bottom:20px">
+      <div id="loggedOut" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center">
+        <input type="text" id="uName" placeholder="昵称" maxlength="12" style="width:100px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:.9em;outline:none;text-align:center">
+        <input type="password" id="uPass" placeholder="密码" style="width:100px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:.9em;outline:none;text-align:center">
+        <button class="btn-sm" onclick="doRegister()" style="background:rgba(52,152,219,.3);border-color:rgba(52,152,219,.5)">注册</button>
+        <button class="btn-sm" onclick="doLogin()">登录</button>
+      </div>
+      <div id="loggedIn" style="display:none">
+        <span style="color:#f0c040">👤 <span id="dispName"></span></span>
+        <button class="btn-sm" onclick="doLogout()" style="margin-left:8px">退出</button>
+      </div>
+    </div>
+
     <div class="games-grid">
       <div class="game-card" onclick="location.href='/bull-bull'">
         <div class="gc-icon">🃏</div>
@@ -149,6 +162,16 @@ body {
           <span>🎯 经典飞行棋</span>
         </div>
         <a class="gc-btn" href="/ludo">进入游戏</a>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:24px">
+      <button class="btn-sm" onclick="toggleLeaderboard()" style="border-color:rgba(240,192,64,.4)">排行榜 🏆</button>
+    </div>
+    <div id="lbPanel" style="display:none;max-width:500px;margin:16px auto">
+      <div style="background:rgba(255,255,255,.06);border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,.08)">
+        <h3 style="color:#f0c040;margin-bottom:10px">排行榜</h3>
+        <div id="lbContent">加载中...</div>
       </div>
     </div>
 
@@ -205,6 +228,65 @@ function renderRoomList(rooms) {
 
 function esc(s) {
   const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+}
+
+// 用户系统
+let currentUser = sessionStorage.getItem('currentUser') || '';
+
+function initUser() {
+  if (currentUser) {
+    document.getElementById('loggedOut').style.display = 'none';
+    document.getElementById('loggedIn').style.display = '';
+    document.getElementById('dispName').textContent = currentUser;
+  }
+}
+
+async function doRegister() {
+  const name = document.getElementById('uName').value.trim();
+  const pass = document.getElementById('uPass').value.trim();
+  if (!name || !pass) return toast('请输入昵称和密码');
+  const r = await fetch('/api/register', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, password: pass}) });
+  const d = await r.json();
+  if (d.ok) { currentUser = name; sessionStorage.setItem('currentUser', name); initUser(); toast('注册成功!'); }
+  else toast(d.error);
+}
+
+async function doLogin() {
+  const name = document.getElementById('uName').value.trim();
+  const pass = document.getElementById('uPass').value.trim();
+  if (!name || !pass) return toast('请输入昵称和密码');
+  const r = await fetch('/api/login', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({name, password: pass}) });
+  const d = await r.json();
+  if (d.ok) { currentUser = name; sessionStorage.setItem('currentUser', name); initUser(); toast('登录成功!'); }
+  else toast(d.error);
+}
+
+function doLogout() { currentUser = ''; sessionStorage.removeItem('currentUser'); document.getElementById('loggedOut').style.display = ''; document.getElementById('loggedIn').style.display = 'none'; }
+
+async function toggleLeaderboard() {
+  const p = document.getElementById('lbPanel');
+  if (p.style.display !== 'none') { p.style.display = 'none'; return; }
+  p.style.display = '';
+  try {
+    const r = await fetch('/api/leaderboard');
+    const d = await r.json();
+    const lb = d.leaderboard || [];
+    document.getElementById('lbContent').innerHTML = lb.length ? `<table style="width:100%;font-size:.85em;border-collapse:collapse">
+      <thead><tr style="opacity:.5"><th style="text-align:left;padding:4px">#</th><th style="text-align:left;padding:4px">玩家</th><th style="padding:4px">场次</th><th style="padding:4px">胜场</th><th style="padding:4px">胜率</th></tr></thead>
+      <tbody>${lb.map((p,i) => `<tr><td style="padding:4px;color:${i<3?'#f0c040':'inherit'}">${i+1}</td><td style="padding:4px">${esc(p.name)}</td><td style="padding:4px;text-align:center">${p.total_games}</td><td style="padding:4px;text-align:center;color:#2ecc71">${p.total_wins}</td><td style="padding:4px;text-align:center">${p.win_rate}%</td></tr>`).join('')}</tbody></table>` : '暂无数据';
+  } catch(e) { document.getElementById('lbContent').textContent = '加载失败'; }
+}
+
+function toast(msg) { const t = document.createElement('div'); t.textContent = msg; t.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:10px 20px;border-radius:8px;font-size:.9em;z-index:9999;transition:opacity .3s'; document.body.appendChild(t); setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2000); }
+
+initUser();
+
+// 自动填充昵称
+if (currentUser) {
+  const ci = document.getElementById('cName');
+  const ji = document.getElementById('jName');
+  if (ci) ci.value = currentUser;
+  if (ji) ji.value = currentUser;
 }
 
 fetchRooms();
