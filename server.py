@@ -6,6 +6,7 @@ import os
 import time
 import hashlib
 import sqlite3
+import logging
 from pathlib import Path
 from datetime import datetime
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -15,8 +16,19 @@ from games import create_room, GAME_TYPES
 from games.bull_bull import BullBullRoom, BET_MODES, evaluate_hand
 from games.monopoly import MonopolyRoom
 from games.ludo import LudoRoom
+from game_server_improvements import (
+    Validators, PermissionChecker, OperationLogger, ErrorResponse,
+    ValidationError, PermissionError, GameError, GameStateError
+)
 
 app = FastAPI()
+
+# ============ 日志配置 ============
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 rooms: dict[str, object] = {}              # room_id -> BaseGameRoom
 connections: dict[str, dict] = {}          # ws_id -> {"ws": WebSocket, "room": str, "name": str}
@@ -175,8 +187,8 @@ async def broadcast_room(room_id: str):
         try:
             state = room.get_state(viewer=conn["name"])
             await conn["ws"].send_json({"type": "game_state", "data": state})
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"broadcast_room error for {conn.get('name','?')}: {e}")
     # 游戏结束时记录结果
     if room.phase == "finished" and not getattr(room, '_result_logged', False):
         winner = None
@@ -337,33 +349,37 @@ async def websocket_endpoint(ws: WebSocket):
             action = msg.get("action")
 
             if action == "create_room":
-                name = msg["name"].strip()
-                if not name:
-                    await ws.send_json({"type": "error", "message": "请输入昵称"})
-                    continue
-                game_type = msg.get("game_type", "bull_bull")
-                if game_type not in GAME_TYPES:
-                    await ws.send_json({"type": "error", "message": "未知游戏类型"})
-                    continue
-                room_id = _generate_room_id()
-                settings = msg.get("settings", {})
-                room = create_room(game_type, room_id, name, settings)
-                if not room:
-                    await ws.send_json({"type": "error", "message": "创建房间失败"})
-                    continue
-                game_max = GAME_TYPES[game_type]["max_players"]
-                room.add_player(name, max_players=game_max)
-                rooms[room_id] = room
-                player_rooms[room_id] = {ws_id}
-                connections[ws_id] = {"ws": ws, "room": room_id, "name": name}
-                player = next((p for p in room.players if p["name"] == name), None)
-                reconnect_token = player["reconnect_token"] if player else ""
-                await ws.send_json({
-                    "type": "room_created", "room_id": room_id, "name": name,
-                    "game_type": game_type,
-                    "reconnect_token": reconnect_token
-                })
-                await broadcast_room(room_id)
+                try:
+                    name = msg["name"].strip()
+                    Validators.validate_player_name(name)
+                    game_type = msg.get("game_type", "bull_bull")
+                    if game_type not in GAME_TYPES:
+                        raise ValidationError("未知游戏类型", "game_type")
+                    room_id = _generate_room_id()
+                    settings = msg.get("settings", {})
+                    room = create_room(game_type, room_id, name, settings)
+                    if not room:
+                        raise GameStateError("创建房间失败")
+                    game_max = GAME_TYPES[game_type]["max_players"]
+                    room.add_player(name, max_players=game_max)
+                    rooms[room_id] = room
+                    player_rooms[room_id] = {ws_id}
+                    connections[ws_id] = {"ws": ws, "room": room_id, "name": name}
+                    player = next((p for p in room.players if p["name"] == name), None)
+                    reconnect_token = player["reconnect_token"] if player else ""
+                    await ws.send_json({
+                        "type": "room_created", "room_id": room_id, "name": name,
+                        "game_type": game_type,
+                        "reconnect_token": reconnect_token
+                    })
+                    OperationLogger.log_action(room_id, name, "create_room", "success")
+                    await broadcast_room(room_id)
+                except ValidationError as e:
+                    await ws.send_json(ErrorResponse.from_error(e))
+                    OperationLogger.log_error("", msg.get("name", "?"), "create_room", e)
+                except GameError as e:
+                    await ws.send_json(ErrorResponse.from_error(e))
+                    OperationLogger.log_error("", msg.get("name", "?"), "create_room", e)
 
             elif action == "join_room":
                 name = msg["name"].strip()
@@ -565,6 +581,8 @@ async def websocket_endpoint(ws: WebSocket):
                 result = room.skip_buy(conn["name"])
                 if result.get("ok"):
                     await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": result.get("error", "拍卖启动失败")})
 
             elif action == "buy_house":
                 conn = connections.get(ws_id)
