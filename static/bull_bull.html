@@ -11,13 +11,23 @@
 body {
   font-family: 'Noto Sans SC', -apple-system, "Microsoft YaHei", sans-serif;
   color: #e8e6e3; min-height: 100vh;
-  background: linear-gradient(135deg, #0a2e1a 0%, #0d4a2e 30%, #073d24 60%, #0a1a10 100%);
-  background-size: 400% 400%; animation: bgShift 20s ease infinite;
+  background: #060a08; position: relative;
 }
-@keyframes bgShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+/* ── Ambient Orbs ── */
+.orbs{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(100px);opacity:.14}
+.orb-1{width:500px;height:500px;background:radial-gradient(circle,#1a3a1e,transparent 70%);top:-5%;right:10%;animation:orbA 26s ease-in-out infinite}
+.orb-2{width:400px;height:400px;background:radial-gradient(circle,#0a2a1e,transparent 70%);bottom:-5%;left:-5%;animation:orbB 30s ease-in-out infinite}
+.orb-3{width:350px;height:350px;background:radial-gradient(circle,#2a1a0e,transparent 70%);top:40%;left:30%;animation:orbC 22s ease-in-out infinite}
+@keyframes orbA{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(50px,30px) scale(1.1)}66%{transform:translate(-20px,50px) scale(.9)}}
+@keyframes orbB{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(40px,-40px) scale(1.12)}}
+@keyframes orbC{0%,100%{transform:translate(0,0)}50%{transform:translate(-40px,30px) scale(1.1)}}
+/* ── CRT Scanlines ── */
+.scanlines{position:fixed;inset:0;pointer-events:none;z-index:9998;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.02) 2px,rgba(0,0,0,.02) 4px)}
 
 /* ── Glass ── */
-.glass{background:rgba(255,255,255,.05);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:16px;transition:all .3s}
+.glass{background:rgba(255,255,255,.04);backdrop-filter:blur(24px) saturate(1.2);-webkit-backdrop-filter:blur(24px) saturate(1.2);border:1px solid rgba(255,255,255,.07);border-radius:20px;transition:all .4s}
 
 .container { max-width: 900px; margin: 0 auto; padding: 20px; }
 .back-link {
@@ -29,9 +39,10 @@ body {
 #lobby { text-align: center; padding-top: 30px; }
 #lobby h1 {
   font-family: 'Orbitron','Noto Sans SC',sans-serif; font-size: 3.2em; font-weight: 900;
-  background: linear-gradient(135deg,#f0c040,#ff8f00,#f0c040); background-size: 200% 200%;
+  background: linear-gradient(135deg,#f0c040,#ff8f00,#f0c040,#ffab00,#f0c040); background-size: 300% 300%;
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-  animation: gradText 3s ease infinite; letter-spacing: 2px; margin-bottom: 8px;
+  animation: gradText 4s ease infinite; letter-spacing: 4px; margin-bottom: 8px;
+  filter: drop-shadow(0 0 20px rgba(240,192,64,.15));
 }
 @keyframes gradText{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 #lobby .subtitle { color: rgba(255,255,255,.35); margin-bottom: 30px; font-size: 1.05em; letter-spacing: 1px; }
@@ -358,6 +369,8 @@ input[type="text"]:focus { border-color: rgba(240,192,64,.4); box-shadow: 0 0 0 
 </head>
 <body>
 
+<div class="orbs"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+<div class="scanlines"></div>
 <div class="conn-status disconnected" id="connStatus">未连接</div>
 
 <!-- 大厅 -->

@@ -1,0 +1,197 @@
+/* ═══════════════════════════════════════════
+   ELECTRIC CASINO — Shared Theme
+   ═══════════════════════════════════════════ */
+
+/* ── Floating Orbs (ambient background) ── */
+.orbs {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+}
+.orbs .orb {
+  position: absolute; border-radius: 50%; filter: blur(80px); opacity: .12;
+  animation: orbFloat var(--dur, 20s) ease-in-out infinite;
+}
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(30px, -50px) scale(1.1); }
+  50% { transform: translate(-20px, 30px) scale(.95); }
+  75% { transform: translate(50px, 20px) scale(1.05); }
+}
+
+/* ── CRT Scanline Overlay ── */
+.scanlines {
+  position: fixed; inset: 0; pointer-events: none; z-index: 9998;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, .03) 2px,
+    rgba(0, 0, 0, .03) 4px
+  );
+  mix-blend-mode: multiply;
+}
+
+/* ── Noise Texture ── */
+.noise {
+  position: fixed; inset: 0; pointer-events: none; z-index: 9997; opacity: .035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat; background-size: 256px 256px;
+}
+
+/* ── Enhanced Glass ── */
+.glass {
+  background: rgba(255,255,255,.04);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 20px;
+  transition: all .4s cubic-bezier(.25,.46,.45,.94);
+  position: relative;
+}
+.glass::before {
+  content: '';
+  position: absolute; inset: -1px; border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255,255,255,.08) 0%, transparent 50%);
+  pointer-events: none; z-index: 1;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  padding: 1px; border-radius: inherit;
+}
+
+/* ── Neon Glow Text ── */
+.neon-gold {
+  text-shadow:
+    0 0 7px rgba(255,215,0,.6),
+    0 0 20px rgba(255,215,0,.3),
+    0 0 42px rgba(255,215,0,.15);
+}
+.neon-blue {
+  text-shadow:
+    0 0 7px rgba(79,195,247,.6),
+    0 0 20px rgba(79,195,247,.3),
+    0 0 42px rgba(79,195,247,.15);
+}
+.neon-green {
+  text-shadow:
+    0 0 7px rgba(0,230,118,.6),
+    0 0 20px rgba(0,230,118,.3),
+    0 0 42px rgba(0,230,118,.15);
+}
+.neon-red {
+  text-shadow:
+    0 0 7px rgba(255,82,82,.6),
+    0 0 20px rgba(255,82,82,.3),
+    0 0 42px rgba(255,82,82,.15);
+}
+
+/* ── Ambient Glow Border (on hover) ── */
+.glow-border {
+  position: relative;
+}
+.glow-border::after {
+  content: '';
+  position: absolute; inset: -2px; border-radius: inherit;
+  background: var(--glow-color, rgba(255,215,0,.15));
+  filter: blur(12px); opacity: 0;
+  transition: opacity .4s; z-index: -1;
+}
+.glow-border:hover::after { opacity: 1; }
+
+/* ── Staggered Fade-In ── */
+.stagger-in > * {
+  opacity: 0;
+  animation: staggerFade .6s cubic-bezier(.25,.46,.45,.94) forwards;
+}
+.stagger-in > *:nth-child(1) { animation-delay: .05s; }
+.stagger-in > *:nth-child(2) { animation-delay: .12s; }
+.stagger-in > *:nth-child(3) { animation-delay: .19s; }
+.stagger-in > *:nth-child(4) { animation-delay: .26s; }
+.stagger-in > *:nth-child(5) { animation-delay: .33s; }
+.stagger-in > *:nth-child(6) { animation-delay: .4s; }
+@keyframes staggerFade {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Ambient Glow Ring (around player cards) ── */
+@keyframes glowRing {
+  0%, 100% { box-shadow: 0 0 15px var(--ring-color, rgba(255,215,0,.1)); }
+  50% { box-shadow: 0 0 30px var(--ring-color, rgba(255,215,0,.2)), 0 0 60px var(--ring-color, rgba(255,215,0,.05)); }
+}
+
+/* ── Smooth Scrollbar ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.12);
+  border-radius: 4px;
+  transition: background .3s;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
+
+/* ── Selection Color ── */
+::selection {
+  background: rgba(255,215,0,.25);
+  color: #fff;
+}
+
+/* ── Connection Status Pulse ── */
+@keyframes connPulse {
+  0%, 100% { box-shadow: 0 0 4px var(--pulse-color, rgba(0,230,118,.3)); }
+  50% { box-shadow: 0 0 12px var(--pulse-color, rgba(0,230,118,.5)), 0 0 24px var(--pulse-color, rgba(0,230,118,.15)); }
+}
+
+/* ── Button Ripple ── */
+.ripple {
+  position: relative; overflow: hidden;
+}
+.ripple::after {
+  content: '';
+  position: absolute; top: 50%; left: 50%;
+  width: 0; height: 0;
+  background: radial-gradient(circle, rgba(255,255,255,.25) 0%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width .5s, height .5s;
+}
+.ripple:active::after {
+  width: 300px; height: 300px;
+}
+
+/* ── Shimmer Effect ── */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,.06) 25%,
+    rgba(255,255,255,.12) 50%,
+    rgba(255,255,255,.06) 75%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* ── Toast Enhanced ── */
+.toast {
+  position: fixed; bottom: 32px; left: 50%;
+  background: rgba(10,10,26,.92);
+  backdrop-filter: blur(24px) saturate(1.3);
+  -webkit-backdrop-filter: blur(24px) saturate(1.3);
+  color: #fff; padding: 14px 28px; border-radius: 14px;
+  font-size: .9em; z-index: 9999;
+  border: 1px solid rgba(255,255,255,.1);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,.5),
+    0 0 0 1px rgba(255,255,255,.05) inset;
+  animation: toastIn .5s cubic-bezier(.175,.885,.32,1.275);
+  font-family: inherit;
+  letter-spacing: .3px;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(20px) scale(.92); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}

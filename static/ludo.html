@@ -22,24 +22,40 @@ body{
   background-size:400% 400%;animation:bgShift 20s ease infinite;
 }
 @keyframes bgShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
-.container{max-width:1200px;margin:0 auto;padding:12px}
+
+/* ── Ambient Orbs ── */
+.orbs{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.orb{position:absolute;border-radius:50%;filter:blur(100px);opacity:.13}
+.orb-1{width:500px;height:500px;background:radial-gradient(circle,#0a3a1a,transparent 70%);top:-5%;left:-5%;animation:orbA 24s ease-in-out infinite}
+.orb-2{width:450px;height:450px;background:radial-gradient(circle,#1a3a0a,transparent 70%);bottom:-10%;right:-8%;animation:orbB 28s ease-in-out infinite}
+.orb-3{width:350px;height:350px;background:radial-gradient(circle,#0a2a3a,transparent 70%);top:50%;right:15%;animation:orbC 20s ease-in-out infinite}
+@keyframes orbA{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(60px,50px) scale(1.12)}66%{transform:translate(-30px,20px) scale(.92)}}
+@keyframes orbB{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(-50px,-30px) scale(1.08)}66%{transform:translate(40px,-15px) scale(.95)}}
+@keyframes orbC{0%,100%{transform:translate(0,0)}50%{transform:translate(50px,-70px) scale(1.15)}}
+
+/* ── CRT Scanline ── */
+.scanlines{position:fixed;inset:0;pointer-events:none;z-index:9998;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.025) 2px,rgba(0,0,0,.025) 4px)}
+
+.container{max-width:1200px;margin:0 auto;padding:12px;position:relative;z-index:1}
 a.back{color:var(--muted);text-decoration:none;font-size:.85em;display:inline-block;margin-bottom:6px;transition:color .2s}
 a.back:hover{color:var(--gold)}
 
 /* ── Glass ── */
-.glass{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--glass-b);border-radius:14px;transition:all .3s}
+.glass{background:var(--glass);backdrop-filter:blur(24px) saturate(1.2);-webkit-backdrop-filter:blur(24px) saturate(1.2);border:1px solid var(--glass-b);border-radius:16px;transition:all .3s}
 
 /* ── Lobby ── */
 #lobby{text-align:center;padding-top:40px}
 #lobby h1{
   font-family:'Orbitron','Noto Sans SC',sans-serif;font-size:2.6em;font-weight:900;
-  background:linear-gradient(135deg,#00e676,#00695c,#00e676);background-size:200% 200%;
+  background:linear-gradient(135deg,#00e676 0%,#00695c 30%,#4caf50 50%,#00e676 70%,#00695c 100%);background-size:300% 300%;
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
   animation:gradText 3s ease infinite;letter-spacing:2px;
+  filter:drop-shadow(0 0 20px rgba(0,230,118,.25));
 }
 @keyframes gradText{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 #lobby .sub{color:var(--muted);margin:8px 0 28px;font-size:.95em;letter-spacing:1px}
-.lobby-card{background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:16px;padding:28px;max-width:400px;margin:0 auto 24px;border:1px solid var(--glass-b)}
+.lobby-card{background:var(--glass);backdrop-filter:blur(24px) saturate(1.2);-webkit-backdrop-filter:blur(24px) saturate(1.2);border-radius:16px;padding:28px;max-width:400px;margin:0 auto 24px;border:1px solid var(--glass-b);position:relative;overflow:hidden}
+.lobby-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#00e676,#00695c);border-radius:16px 16px 0 0}
 .lobby-card h2{margin-bottom:18px;font-size:1.15em;font-weight:600}
 
 /* ── Inputs ── */
@@ -81,8 +97,9 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.25)}
 
 /* ── Waiting ── */
 #waiting{text-align:center;padding-top:40px}
-.room-code{font-family:'Orbitron',monospace;font-size:2.2em;font-weight:700;letter-spacing:6px;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);padding:12px 28px;border-radius:14px;display:inline-block;margin:12px 0;cursor:pointer;border:1px solid var(--glass-b);transition:all .3s;color:var(--gold);text-shadow:0 0 15px rgba(255,215,0,.25)}
-.room-code:hover{border-color:rgba(255,215,0,.25);box-shadow:0 0 30px rgba(255,215,0,.08)}
+.room-code{font-family:'Orbitron',monospace;font-size:2.2em;font-weight:700;letter-spacing:6px;background:var(--glass);backdrop-filter:blur(24px) saturate(1.2);-webkit-backdrop-filter:blur(24px) saturate(1.2);padding:12px 28px;border-radius:16px;display:inline-block;margin:12px 0;cursor:pointer;border:1px solid var(--glass-b);transition:all .3s;color:var(--gold);text-shadow:0 0 15px rgba(255,215,0,.25);animation:codeGlow 3s ease-in-out infinite}
+@keyframes codeGlow{0%,100%{box-shadow:0 0 10px rgba(255,215,0,.06)}50%{box-shadow:0 0 25px rgba(255,215,0,.12),0 0 50px rgba(255,215,0,.04)}}
+.room-code:hover{border-color:rgba(255,215,0,.25);box-shadow:0 0 30px rgba(255,215,0,.12)}
 .p-tags{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:18px 0}
 .p-tag{background:var(--glass);backdrop-filter:blur(12px);padding:8px 18px;border-radius:20px;font-size:.9em;border:1px solid var(--glass-b);transition:all .3s}
 .p-tag.host{border-color:rgba(255,215,0,.25);background:rgba(255,215,0,.05)}
@@ -90,7 +107,8 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.25)}
 
 /* ── Game ── */
 #game{padding-top:6px}
-.topbar{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:14px;margin-bottom:10px;flex-wrap:wrap;gap:8px;border:1px solid var(--glass-b)}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;background:var(--glass);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-radius:16px;margin-bottom:10px;flex-wrap:wrap;gap:8px;border:1px solid var(--glass-b);position:relative}
+.topbar::after{content:'';position:absolute;bottom:0;left:10%;right:10%;height:1px;background:linear-gradient(90deg,transparent,rgba(0,230,118,.25),transparent)}
 .topbar .turn{font-weight:700;color:var(--gold);font-size:1em;text-shadow:0 0 10px rgba(255,215,0,.2)}
 .topbar .info{color:var(--muted);font-size:.85em}
 
@@ -101,9 +119,11 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.25)}
 .board{
   display:grid;grid-template-columns:repeat(15,1fr);grid-template-rows:repeat(15,1fr);
   width:clamp(300px,55vmin,600px);height:clamp(300px,55vmin,600px);
-  gap:1px;background:var(--board-bg);border:3px solid var(--board-border);border-radius:8px;position:relative;
-  box-shadow:0 0 30px rgba(58,122,50,.15),0 0 60px rgba(58,122,50,.05),0 12px 40px rgba(0,0,0,.5),inset 0 0 30px rgba(0,0,0,.15);
+  gap:1px;background:var(--board-bg);border:3px solid var(--board-border);border-radius:14px;position:relative;
+  box-shadow:0 0 30px rgba(58,122,50,.2),0 0 60px rgba(58,122,50,.08),0 12px 40px rgba(0,0,0,.5),inset 0 0 30px rgba(0,0,0,.15);
+  animation:boardGlow 4s ease-in-out infinite;
 }
+@keyframes boardGlow{0%,100%{box-shadow:0 0 30px rgba(58,122,50,.2),0 0 60px rgba(58,122,50,.08),0 12px 40px rgba(0,0,0,.5),inset 0 0 30px rgba(0,0,0,.15)}50%{box-shadow:0 0 40px rgba(58,122,50,.3),0 0 80px rgba(58,122,50,.12),0 12px 40px rgba(0,0,0,.5),inset 0 0 30px rgba(0,0,0,.15)}}
 
 /* ── Cells ── */
 .cell{background:rgba(255,255,255,.1);border-radius:2px;position:relative;display:flex;align-items:center;justify-content:center;transition:all .3s}
@@ -118,7 +138,7 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.25)}
 .cell.yard-yellow{background:rgba(255,215,0,.15);border-radius:6px}
 .cell.yard-green{background:rgba(0,230,118,.15);border-radius:6px}
 .cell.yard-red{background:rgba(255,82,82,.15);border-radius:6px}
-.cell.center-area{background:linear-gradient(135deg,rgba(255,255,255,.04),rgba(255,255,255,.01));border-radius:4px}
+.cell.center-area{background:linear-gradient(135deg,rgba(0,230,118,.04),rgba(255,255,255,.02));border-radius:6px}
 .cell.highlight{box-shadow:inset 0 0 0 2px var(--gold),0 0 10px rgba(255,215,0,.35);cursor:pointer}
 .cell.highlight:hover{background:rgba(255,215,0,.2)}
 
@@ -131,7 +151,7 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.25)}
 .piece-bounce{animation:bounce-piece .3s ease 2}
 
 /* ── Dice ── */
-.dice-area{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:auto}
+.dice-area{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:auto;background:rgba(0,0,0,.25);border-radius:10px;padding:8px 12px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .dice{font-size:2.8em;line-height:1;transition:all .2s;filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))}
 .dice.rolling{animation:diceroll .5s ease}
 @keyframes diceroll{0%{transform:rotateX(0) scale(1)}25%{transform:rotateX(180deg) scale(1.2)}50%{transform:rotateX(360deg) scale(1)}75%{transform:rotateX(540deg) scale(1.1)}100%{transform:rotateX(720deg) scale(1)}}
@@ -205,6 +225,11 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.25)}
 </style>
 </head>
 <body>
+
+<!-- Ambient Background -->
+<div class="orbs"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+<div class="scanlines"></div>
+
 <div class="conn fail" id="connSt">未连接</div>
 
 <div class="container" id="lobby">
