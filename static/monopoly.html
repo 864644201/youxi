@@ -254,7 +254,43 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.3)}
 <div id="popupOverlay" style="display:none"></div>
 <div id="propPopup" style="display:none"></div>
 
+<!-- 交易弹窗 -->
+<div id="tradeOverlay" style="display:none" class="overlay" onclick="if(event.target===this)closeTrade()"></div>
+<div id="tradePanel" style="display:none" class="prop-popup" style="min-width:340px;max-width:420px"></div>
+
 <script>
+// ---- 音效系统（Web Audio API 合成） ----
+const SFX = (() => {
+  let ctx = null;
+  function getCtx() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return ctx;
+  }
+  function play(freq, duration, type = 'sine', vol = 0.15) {
+    try {
+      const c = getCtx(), o = c.createOscillator(), g = c.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol, c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + duration);
+      o.connect(g); g.connect(c.destination);
+      o.start(); o.stop(c.currentTime + duration);
+    } catch(e) {}
+  }
+  return {
+    dice() { play(800, 0.08, 'square', 0.1); setTimeout(() => play(1200, 0.08, 'square', 0.1), 80); setTimeout(() => play(600, 0.12, 'square', 0.08), 160); },
+    buy() { play(523, 0.1); setTimeout(() => play(659, 0.1), 100); setTimeout(() => play(784, 0.15), 200); },
+    rent() { play(400, 0.15, 'sawtooth', 0.08); setTimeout(() => play(300, 0.2, 'sawtooth', 0.06), 150); },
+    money() { play(1047, 0.06, 'sine', 0.1); setTimeout(() => play(1319, 0.06, 'sine', 0.1), 60); },
+    jail() { play(200, 0.3, 'sawtooth', 0.12); setTimeout(() => play(150, 0.4, 'sawtooth', 0.1), 200); },
+    bankruptcy() { for (let i = 0; i < 5; i++) setTimeout(() => play(400 - i * 60, 0.2, 'sawtooth', 0.1), i * 150); },
+    victory() { [523,659,784,1047].forEach((f,i) => setTimeout(() => play(f, 0.2, 'sine', 0.12), i * 150)); },
+    auction() { play(660, 0.1, 'triangle', 0.1); setTimeout(() => play(880, 0.15, 'triangle', 0.1), 120); },
+    card() { play(700, 0.08, 'sine', 0.1); setTimeout(() => play(900, 0.12, 'sine', 0.08), 80); },
+    trade() { play(523, 0.08); setTimeout(() => play(784, 0.12), 100); },
+    capture() { play(300, 0.15, 'square', 0.12); setTimeout(() => play(200, 0.2, 'square', 0.1), 150); },
+  };
+})();
+
 let ws=null,myName='',roomId='',gs=null,token='',rtimer=null;
 const RI=2000,MW=60000;let rstart=0;
 
@@ -424,6 +460,39 @@ function renderActions(s){
   if(s.auction&&!s.auction.ended){renderAuction(s);return;}
   else{const ap=document.querySelector('.auction-panel');if(ap)ap.remove();}
 
+  // 收到交易请求
+  if (s.trade && s.trade.target === myName && !s.trade.ended) {
+    const t = s.trade;
+    const offerParts = [];
+    if (t.offer.cash > 0) offerParts.push(`$${t.offer.cash}`);
+    (t.offer.properties || []).forEach(idx => offerParts.push(BS[idx].name));
+    const reqParts = [];
+    if (t.request.cash > 0) reqParts.push(`$${t.request.cash}`);
+    (t.request.properties || []).forEach(idx => reqParts.push(BS[idx].name));
+
+    el.innerHTML = `<div class="act" style="text-align:center">
+      <h3 style="color:var(--gold)">🤝 交易请求</h3>
+      <p style="font-size:.85em;margin:8px 0"><b>${esc(t.proposer)}</b> 提议:</p>
+      <div style="display:flex;gap:12px;justify-content:center;margin:10px 0;font-size:.85em">
+        <div style="padding:8px 12px;background:rgba(46,204,113,.1);border-radius:8px"><strong style="color:var(--green)">给你:</strong><br>${offerParts.join(', ') || '无'}</div>
+        <div style="padding:8px 12px;background:rgba(231,76,60,.1);border-radius:8px"><strong style="color:var(--red)">换:</strong><br>${reqParts.join(', ') || '无'}</div>
+      </div>
+      <div class="act-btns" style="margin-top:10px">
+        <button class="btn btn-green" onclick="send({action:'accept_trade'})">接受</button>
+        <button class="btn btn-red" onclick="send({action:'reject_trade'})">拒绝</button>
+      </div>
+    </div>`;
+    if (prompt) prompt.innerHTML = `${esc(t.proposer)}<br>想和你交易`;
+    return;
+  }
+  // 发起者等待中
+  if (s.trade && s.trade.proposer === myName && !s.trade.ended) {
+    el.innerHTML = `<div class="act"><p style="text-align:center;color:var(--muted)">等待 ${esc(s.trade.target)} 回应交易...</p>
+      <div style="text-align:center;margin-top:8px"><button class="btn btn-sm btn-outline" onclick="send({action:'cancel_trade'})">取消交易</button></div></div>`;
+    if (prompt) prompt.textContent = '等待对方回应...';
+    return;
+  }
+
   if(s.phase==='finished'){
     const w=s.players.find(p=>p.alive);
     el.innerHTML=`<div class="act" style="text-align:center"><h3>🏆 ${w?w.name+' 获胜!':'游戏结束'}</h3>${myName===s.host?'<button class="btn btn-blue btn-lg" onclick="startGame()">再来一局</button>':''}</div>`;
@@ -494,6 +563,10 @@ function renderActions(s){
       mgProps.forEach(pr=>{const cost=Math.floor(pr.mortgage_value*1.1);extra+=`<button class="btn btn-sm btn-gold" onclick="unmortgageProp(${pr.index})">${pr.name} -$${cost}</button>`;});
       extra+='</div></div>';
     }
+  }
+  // 交易按钮
+  if (s.phase === 'playing' && mt && !s.pending_action && (!s.auction || s.auction.ended)) {
+    extra += '<div style="margin-top:8px;text-align:center"><button class="btn btn-sm btn-outline" onclick="showTradePanel()">发起交易 🤝</button></div>';
   }
   el.innerHTML=`<div class="act"><div class="act-btns"><button class="btn btn-blue btn-lg${rolledDoubles?' btn-green':''}" onclick="rollDice()">${rollLabel}</button></div>${extra}</div>`;
   if(prompt)prompt.textContent='轮到你了!';
@@ -592,6 +665,31 @@ function handleMsg(m){
     case'error':toast(m.message);break;
     case'game_state':
       const prevGs=gs;gs=m.data;
+      // 音效触发
+      if (prevGs && gs) {
+        if (gs.dice && gs.dice[0] > 0 && prevGs.dice && (prevGs.dice[0] !== gs.dice[0] || prevGs.dice[1] !== gs.dice[1])) {
+          SFX.dice();
+        }
+        if (gs.events && prevGs.events && gs.events.length > prevGs.events.length) {
+          const ev = gs.events[gs.events.length - 1];
+          if (ev.type === 'buy') SFX.buy();
+          else if (ev.type === 'money') SFX.rent();
+          else if (ev.type === 'bankruptcy') SFX.bankruptcy();
+          else if (ev.type === 'victory') SFX.victory();
+          else if (ev.type === 'auction') SFX.auction();
+          else if (ev.type === 'card') SFX.card();
+          else if (ev.type === 'trade') SFX.trade();
+          else if (ev.type === 'build') SFX.money();
+          else if (ev.type === 'mortgage') SFX.money();
+          else if (ev.type === 'action' && ev.text && ev.text.includes('监狱')) SFX.jail();
+        }
+        if (prevGs.players && gs.players) {
+          gs.players.forEach(p => {
+            const prev = prevGs.players.find(pp => pp.name === p.name);
+            if (prev && p.cash > prev.cash + 100 && p.name === myName) SFX.money();
+          });
+        }
+      }
       // 骰子动画：骰子值变化时触发
       const diceChanged=prevGs&&gs&&gs.dice&&gs.dice[0]>0&&
         (prevGs.dice[0]!==gs.dice[0]||prevGs.dice[1]!==gs.dice[1]);
@@ -634,6 +732,84 @@ function handleMsg(m){
 }
 function saveS(){sessionStorage.setItem('mono_s',JSON.stringify({n:myName,r:roomId,t:token}));}
 function loadS(){try{const s=JSON.parse(sessionStorage.getItem('mono_s'));if(s&&s.n&&s.r&&s.t){myName=s.n;roomId=s.r;token=s.t;return true;}}catch(e){}return false;}
+
+// ---- 交易系统 ----
+let tradeSelection = { target: '', offerProps: new Set(), reqProps: new Set() };
+
+function showTradePanel() {
+  if (!gs) return;
+  const others = gs.players.filter(p => p.alive && p.name !== myName);
+  if (!others.length) return;
+  const me = gs.players.find(p => p.name === myName);
+  const panel = document.getElementById('tradePanel');
+  const overlay = document.getElementById('tradeOverlay');
+  overlay.style.display = '';
+  panel.style.display = '';
+
+  let html = '<div class="prop-popup"><h3 style="color:var(--gold);margin-bottom:12px">发起交易</h3>';
+  html += '<div style="margin-bottom:10px"><label style="font-size:.85em;color:var(--muted)">交易对象:</label><br>';
+  html += '<select id="tradeTarget" style="width:100%;padding:8px;margin-top:4px;border-radius:6px;background:rgba(255,255,255,.08);color:#fff;border:1px solid var(--border)">';
+  others.forEach(p => html += `<option value="${esc(p.name)}">${esc(p.name)} ($${p.cash})</option>`);
+  html += '</select></div>';
+
+  // 我方出价
+  html += '<div style="margin-bottom:10px;padding:10px;background:rgba(46,204,113,.08);border-radius:8px"><strong style="font-size:.85em;color:var(--green)">你出价</strong>';
+  html += '<div style="margin-top:6px"><input type="number" id="tradeOfferCash" value="0" min="0" step="10" style="width:100px;padding:4px;border-radius:4px;background:rgba(255,255,255,.06);color:#fff;border:1px solid var(--border);text-align:center"> $</div>';
+  if (me && me.properties && me.properties.length > 0) {
+    html += '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px">';
+    me.properties.forEach(pr => {
+      if (pr.houses === 0 && !pr.mortgaged) {
+        html += `<label style="font-size:.75em;cursor:pointer"><input type="checkbox" class="trade-offer-prop" value="${pr.index}"> <span style="background:${pr.group_color};padding:1px 5px;border-radius:3px;color:#fff">${esc(pr.name)}</span></label> `;
+      }
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // 对方出价
+  html += '<div style="margin-bottom:10px;padding:10px;background:rgba(231,76,60,.08);border-radius:8px"><strong style="font-size:.85em;color:var(--red)">你要对方</strong>';
+  html += '<div style="margin-top:6px"><input type="number" id="tradeReqCash" value="0" min="0" step="10" style="width:100px;padding:4px;border-radius:4px;background:rgba(255,255,255,.06);color:#fff;border:1px solid var(--border);text-align:center"> $</div>';
+  html += '<div id="tradeReqProps" style="display:flex;flex-wrap:wrap;gap:3px;margin-top:6px"></div>';
+  html += '</div>';
+
+  html += '<div style="display:flex;gap:8px;justify-content:center"><button class="btn btn-green" onclick="sendTrade()">发起交易</button><button class="btn btn-outline" onclick="closeTrade()">取消</button></div></div>';
+  panel.innerHTML = html;
+
+  // 当选择交易对象时更新对方地产列表
+  document.getElementById('tradeTarget').onchange = updateTradeTargetProps;
+  updateTradeTargetProps();
+}
+
+function updateTradeTargetProps() {
+  const targetName = document.getElementById('tradeTarget').value;
+  const target = gs.players.find(p => p.name === targetName);
+  const container = document.getElementById('tradeReqProps');
+  if (!target || !target.properties || target.properties.length === 0) {
+    container.innerHTML = '<span style="font-size:.75em;color:var(--muted)">对方无地产</span>';
+    return;
+  }
+  container.innerHTML = target.properties.filter(pr => pr.houses === 0 && !pr.mortgaged).map(pr =>
+    `<label style="font-size:.75em;cursor:pointer"><input type="checkbox" class="trade-req-prop" value="${pr.index}"> <span style="background:${pr.group_color};padding:1px 5px;border-radius:3px;color:#fff">${esc(pr.name)}</span></label> `
+  ).join('');
+}
+
+function sendTrade() {
+  const target = document.getElementById('tradeTarget').value;
+  const offerCash = parseInt(document.getElementById('tradeOfferCash').value) || 0;
+  const reqCash = parseInt(document.getElementById('tradeReqCash').value) || 0;
+  const offerProps = [...document.querySelectorAll('.trade-offer-prop:checked')].map(el => parseInt(el.value));
+  const reqProps = [...document.querySelectorAll('.trade-req-prop:checked')].map(el => parseInt(el.value));
+  if (offerCash === 0 && offerProps.length === 0 && reqCash === 0 && reqProps.length === 0) {
+    toast('请至少设置一项交易内容'); return;
+  }
+  send({ action: 'propose_trade', target, offer: { cash: offerCash, properties: offerProps }, request: { cash: reqCash, properties: reqProps } });
+  closeTrade();
+}
+
+function closeTrade() {
+  document.getElementById('tradeOverlay').style.display = 'none';
+  document.getElementById('tradePanel').style.display = 'none';
+}
 
 // ---- Actions ----
 function createRoom(){const n=document.getElementById('cName').value.trim();if(!n)return toast('请输入昵称');send({action:'create_room',name:n,game_type:'monopoly'});}
