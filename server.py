@@ -605,6 +605,59 @@ async def websocket_endpoint(ws: WebSocket):
                 else:
                     await ws.send_json({"type": "error", "message": result.get("error", "赎回失败")})
 
+            # ---- 大富翁交易操作 ----
+
+            elif action == "propose_trade":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                target = msg.get("target", "")
+                offer = msg.get("offer", {"cash": 0, "properties": []})
+                request = msg.get("request", {"cash": 0, "properties": []})
+                result = room.propose_trade(conn["name"], target, offer, request)
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": result.get("error", "交易失败")})
+
+            elif action == "accept_trade":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                result = room.accept_trade(conn["name"])
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+                else:
+                    await ws.send_json({"type": "error", "message": result.get("error", "接受交易失败")})
+
+            elif action == "reject_trade":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                result = room.reject_trade(conn["name"])
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+
+            elif action == "cancel_trade":
+                conn = connections.get(ws_id)
+                if not conn:
+                    continue
+                room = rooms.get(conn["room"])
+                if not room:
+                    continue
+                result = room.cancel_trade(conn["name"])
+                if result.get("ok"):
+                    await broadcast_room(conn["room"])
+
             # ---- 飞行棋特有操作 ----
 
             elif action == "move_piece":
