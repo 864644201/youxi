@@ -77,6 +77,7 @@ body {
 }
 .rc-badge.bull_bull { background: rgba(240,192,64,.2); color: #f0c040; }
 .rc-badge.monopoly { background: rgba(52,152,219,.2); color: #3498db; }
+.rc-badge.ludo { background: rgba(46,204,113,.2); color: #2ecc71; }
 .room-card .rc-info { font-size: .8em; opacity: .5; }
 .room-card .rc-players { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .room-card .rc-tag {
@@ -138,6 +139,17 @@ body {
         </div>
         <a class="gc-btn" href="/monopoly">进入游戏</a>
       </div>
+
+      <div class="game-card" onclick="location.href='/ludo'">
+        <div class="gc-icon">✈️</div>
+        <div class="gc-name">飞行棋</div>
+        <div class="gc-desc">经典飞行棋，掷骰子竞速，撞回对手飞机，最先到达终点获胜！2-4人对战。</div>
+        <div class="gc-meta">
+          <span>👥 2-4人</span>
+          <span>🎯 经典飞行棋</span>
+        </div>
+        <a class="gc-btn" href="/ludo">进入游戏</a>
+      </div>
     </div>
 
     <div class="rooms-section">
@@ -171,7 +183,7 @@ function renderRoomList(rooms) {
   }
   empty.style.display = 'none';
   grid.innerHTML = rooms.map(r => {
-    const href = r.game_type === 'monopoly' ? '/monopoly' : '/bull-bull';
+    const href = r.game_type === 'monopoly' ? '/monopoly' : r.game_type === 'ludo' ? '/ludo' : '/bull-bull';
     let info = `${r.player_count}/${r.max_players}人`;
     if (r.game_type === 'bull_bull' && r.bet_mode) {
       info = `${r.bet_mode} · ${info}`;
