@@ -150,7 +150,6 @@ input[type="text"]:focus { border-color: #f0c040; }
 .player-tag.host::after { content: " 👑"; }
 .start-area { margin-top: 20px; }
 .start-area .hint { opacity: .5; font-size: .85em; margin-top: 10px; }
-.admin-link { margin-top: 12px; padding: 10px; background: rgba(0,0,0,.2); border-radius: 8px; }
 
 /* ---- 游戏 ---- */
 #game { padding-top: 10px; }
@@ -431,7 +430,6 @@ let ws = null;
 let myName = '';
 let roomId = '';
 let gameState = null;
-let adminToken = '';
 let reconnectToken = '';
 let reconnectTimer = null;
 let betCountdown = null;
@@ -491,7 +489,6 @@ function handleMessage(msg) {
   switch (msg.type) {
     case 'room_created':
       myName = msg.name; roomId = msg.room_id;
-      adminToken = msg.admin_token || '';
       reconnectToken = msg.reconnect_token || '';
       saveSession();
       showScreen('waiting');
@@ -522,7 +519,7 @@ function handleMessage(msg) {
 // ---- 持久化会话 ----
 function saveSession() {
   sessionStorage.setItem('niuniu_session', JSON.stringify({
-    name: myName, room: roomId, token: reconnectToken, admin: adminToken
+    name: myName, room: roomId, token: reconnectToken
   }));
 }
 function loadSession() {
@@ -530,7 +527,7 @@ function loadSession() {
     const s = JSON.parse(sessionStorage.getItem('niuniu_session'));
     if (s && s.name && s.room && s.token) {
       myName = s.name; roomId = s.room;
-      reconnectToken = s.token; adminToken = s.admin || '';
+      reconnectToken = s.token;
       return true;
     }
   } catch(e) {}
@@ -604,17 +601,9 @@ function renderState() {
     ).join('');
     const area = document.getElementById('startArea');
     if (myName === s.host) {
-      const adminUrl = `${location.origin}/admin`;
-      let html = s.players.length >= 2
+      area.innerHTML = s.players.length >= 2
         ? `<button class="btn btn-gold" onclick="startGame()">开始游戏 (${s.players.length}人)</button>`
         : `<p class="hint">至少需要2名玩家才能开始</p>`;
-      if (adminToken) {
-        html += `<div class="admin-link">
-          <span style="opacity:.5;font-size:.8em">管理后台: <a href="${adminUrl}" target="_blank" style="color:#f0c040">${adminUrl}</a></span><br>
-          <span style="opacity:.5;font-size:.8em">令牌: <code style="background:rgba(255,255,255,.1);padding:2px 8px;border-radius:4px;cursor:pointer" onclick="navigator.clipboard.writeText('${adminToken}').then(()=>showToast('令牌已复制'))">${adminToken}</code></span>
-        </div>`;
-      }
-      area.innerHTML = html;
     } else {
       area.innerHTML = '<p class="hint">等待房主开始游戏...</p>';
     }
