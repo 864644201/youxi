@@ -275,12 +275,28 @@ class MonopolyRoom(BaseGameRoom):
             else:
                 self.player_jail_turns[name] = self.player_jail_turns.get(name, 0) + 1
                 if self.player_jail_turns[name] >= 3:
-                    self.player_cash[name] = max(0, self.player_cash[name] - 50)
-                    self.player_in_jail[name] = False
-                    self.player_jail_turns[name] = 0
-                    result["jail_paid"] = True
-                    result["jail_fee"] = 50
-                    self._add_event(f"{name} 第三次出狱，自动支付 $50", "🔓", "action")
+                    if self.player_cash[name] >= 50:
+                        self.player_cash[name] -= 50
+                        self.player_in_jail[name] = False
+                        self.player_jail_turns[name] = 0
+                        result["jail_paid"] = True
+                        result["jail_fee"] = 50
+                        self._add_event(f"{name} 第三次出狱，自动支付 $50", "🔓", "action")
+                        # 继续移动（不 return，fall through 到移动逻辑）
+                    else:
+                        # 无法支付出狱费
+                        result["jail_stay"] = True
+                        result["jail_turn"] = self.player_jail_turns[name]
+                        result["jail_no_money"] = True
+                        self._add_event(f"{name} 第三次出狱但现金不足！", "🔒", "action")
+                        self._check_bankruptcy(name, None)
+                        if not any(p["name"] == name and p.get("alive", True) for p in self.players):
+                            self.turn_phase = "end"
+                            self._next_turn()
+                            return result
+                        self.turn_phase = "end"
+                        self._next_turn()
+                        return result
                 else:
                     result["jail_stay"] = True
                     result["jail_turn"] = self.player_jail_turns[name]
@@ -319,9 +335,11 @@ class MonopolyRoom(BaseGameRoom):
                 result["triple_doubles_jail"] = True
                 self.doubles_count = 0
                 self._add_event(f"{name} 连续三个双骰，进监狱！🚔", "🚔", "action")
+                self.pending_action = None
                 self.turn_phase = "end"
                 self._next_turn()
-            elif not land_result.get("needs_action"):
+            else:
+                # 即使有 needs_action，也保留 roll_again 权利
                 result["roll_again"] = True
                 self.turn_phase = "roll"
         else:
@@ -475,6 +493,11 @@ class MonopolyRoom(BaseGameRoom):
             while p != nearest:
                 p = (p + 1) % 40
                 path.append(p)
+                if p == 0:
+                    self.player_cash[name] += self.go_salary
+                    result["passed_go"] = True
+                    result["salary"] = self.go_salary
+                    self._add_event(f"{name} 经过起点，收取 ${self.go_salary}", "💰", "money")
             self.player_positions[name] = nearest
             result["path"] = path
             owner = self._get_owner(nearest)
@@ -539,6 +562,11 @@ class MonopolyRoom(BaseGameRoom):
 
         # 真的破产了
         self._add_event(f"{name} 破产了！💸💸", "💀", "bankruptcy")
+        if creditor:
+            remaining = self.player_cash.get(name, 0)
+            if remaining > 0:
+                self.player_cash[creditor] += remaining
+                self._add_event(f"{name} 剩余 ${remaining} 转移给 {creditor}", "💰", "transfer")
         self.player_cash[name] = 0
         for sp in BOARD_SPACES:
             idx = sp["index"]
@@ -704,6 +732,10 @@ class MonopolyRoom(BaseGameRoom):
         return {"ok": True, "auction_ended": True, "winner": winner, "price": price}
 
     def buy_house(self, name: str, position: int) -> dict:
+        if self.auction and not self.auction.get("ended"):
+            return {"ok": False, "error": "拍卖进行中，不能建房"}
+        if self.pending_action:
+            return {"ok": False, "error": "请先处理当前操作"}
         if self.properties.get(position) != name:
             return {"ok": False, "error": "这不是你的地产"}
         space = BOARD_SPACES[position]
@@ -734,6 +766,8 @@ class MonopolyRoom(BaseGameRoom):
         return {"ok": True, "position": position, "houses": current + 1}
 
     def sell_house(self, name: str, position: int) -> dict:
+        if self.auction and not self.auction.get("ended"):
+            return {"ok": False, "error": "拍卖进行中，不能拆房"}
         if self.properties.get(position) != name:
             return {"ok": False, "error": "这不是你的地产"}
         current = self.houses.get(position, 0)
@@ -754,6 +788,8 @@ class MonopolyRoom(BaseGameRoom):
         return {"ok": True, "position": position, "houses": current - 1, "refund": refund}
 
     def mortgage_property(self, name: str, position: int) -> dict:
+        if self.auction and not self.auction.get("ended"):
+            return {"ok": False, "error": "拍卖进行中，不能抵押"}
         if self.properties.get(position) != name:
             return {"ok": False, "error": "这不是你的地产"}
         if self._is_mortgaged(position):
@@ -768,6 +804,8 @@ class MonopolyRoom(BaseGameRoom):
         return {"ok": True, "position": position, "value": value}
 
     def unmortgage_property(self, name: str, position: int) -> dict:
+        if self.auction and not self.auction.get("ended"):
+            return {"ok": False, "error": "拍卖进行中，不能赎回"}
         if self.properties.get(position) != name:
             return {"ok": False, "error": "这不是你的地产"}
         if not self._is_mortgaged(position):
@@ -900,6 +938,8 @@ class MonopolyRoom(BaseGameRoom):
             return {"ok": False, "error": "已有进行中的交易"}
         if self.auction and not self.auction.get("ended"):
             return {"ok": False, "error": "拍卖进行中，不能交易"}
+        if self.pending_action:
+            return {"ok": False, "error": "请先处理当前操作"}
 
         target_alive = any(p["name"] == target and p.get("alive", True) for p in self.players)
         if not target_alive:
@@ -967,6 +1007,15 @@ class MonopolyRoom(BaseGameRoom):
             return {"ok": False, "error": "没有进行中的交易"}
         if self.trade["target"] != name:
             return {"ok": False, "error": "这不是发给你的交易"}
+        # 验证双方存活
+        proposer_alive = any(p["name"] == self.trade["proposer"] and p.get("alive", True) for p in self.players)
+        if not proposer_alive:
+            self.trade["ended"] = True
+            return {"ok": False, "error": "对方已破产"}
+        target_alive = any(p["name"] == name and p.get("alive", True) for p in self.players)
+        if not target_alive:
+            self.trade["ended"] = True
+            return {"ok": False, "error": "你已破产"}
 
         t = self.trade
         proposer = t["proposer"]

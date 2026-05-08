@@ -294,6 +294,26 @@ body {
 /* ── Scrollbar ── */
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
 
+/* ── Settings ── */
+.settings-sub-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.sub-tab{padding:8px 16px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:transparent;color:rgba(255,255,255,.5);cursor:pointer;font-size:.85em;transition:all .2s}
+.sub-tab.active{background:rgba(231,76,60,.15);border-color:rgba(231,76,60,.3);color:#e74c3c}
+.sub-tab:hover{border-color:rgba(255,255,255,.2);color:#fff}
+.settings-group{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:16px;margin-bottom:12px}
+.settings-group h3{font-size:.9em;color:var(--gold,#ffd700);margin-bottom:10px}
+.upload-row{display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.upload-preview{width:120px;height:80px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:.7em;color:rgba(255,255,255,.3)}
+.upload-preview img{max-width:100%;max-height:100%;object-fit:cover}
+.upload-preview audio{width:100%;height:30px}
+.upload-actions{display:flex;gap:6px;align-items:center}
+.upload-btn{padding:6px 12px;border:1px solid rgba(255,255,255,.12);border-radius:8px;background:rgba(255,255,255,.05);color:#fff;font-size:.8em;cursor:pointer;transition:all .2s;font-family:inherit}
+.upload-btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)}
+.upload-btn.danger{border-color:rgba(231,76,60,.3);color:#e74c3c}
+.upload-btn.danger:hover{background:rgba(231,76,60,.15)}
+.city-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.city-item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:10px;text-align:center}
+.city-item label{font-size:.8em;color:rgba(255,255,255,.5);display:block;margin-bottom:6px}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   .topbar { padding:10px 14px; }
@@ -356,6 +376,7 @@ body {
     <div class="tab active" data-tab="rooms" onclick="switchTab('rooms')">房间管理</div>
     <div class="tab" data-tab="logs" onclick="switchTab('logs')">操作日志</div>
     <div class="tab" data-tab="stats" onclick="switchTab('stats')">数据统计</div>
+    <div class="tab" data-tab="settings" onclick="switchTab('settings')">游戏设置</div>
   </div>
   <div class="content">
     <!-- 房间管理 -->
@@ -404,6 +425,15 @@ body {
         <tbody id="historyBody"></tbody>
       </table></div>
     </div>
+    <!-- 游戏设置 -->
+    <div class="tab-panel" id="panel-settings">
+      <div class="settings-sub-tabs">
+        <button class="sb sub-tab active" onclick="switchSettingsGame('bull_bull')">牛牛</button>
+        <button class="sb sub-tab" onclick="switchSettingsGame('monopoly')">大富翁</button>
+        <button class="sb sub-tab" onclick="switchSettingsGame('ludo')">飞行棋</button>
+      </div>
+      <div id="settingsContent"></div>
+    </div>
   </div>
 </div>
 
@@ -422,6 +452,8 @@ let logged = false;
 let roomsData = [];
 let currentRoom = null;
 let detailState = null;
+let allSettings = {};
+let currentSettingsGame = 'bull_bull';
 
 const SUITS = ['spades','hearts','diamonds','clubs'];
 const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
@@ -492,6 +524,10 @@ function handleMsg(m) {
     case 'game_stats':
       renderStats(m.data);
       break;
+    case 'game_settings':
+      allSettings = m.data;
+      renderCurrentSettings();
+      break;
   }
 }
 
@@ -513,6 +549,7 @@ function switchTab(tab) {
   document.getElementById('panel-' + tab).classList.add('show');
   if (tab === 'logs') loadLogs();
   if (tab === 'stats') loadStats();
+  if (tab === 'settings') send({action:'get_game_settings'});
 }
 function loadLogs() { send({action:'get_logs', limit:100}); }
 function loadStats() { send({action:'get_stats'}); }
@@ -737,6 +774,138 @@ function closePicker() { document.getElementById('cardPicker').style.display='no
 function pickCard(suit,rank,name,idx) { send({action:'admin_set_card',room_id:currentRoom,target:name,card_index:idx,suit,rank}); closePicker(); }
 
 function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+// ---- 游戏设置 ----
+const GAME_NAMES = {bull_bull:'牛牛',monopoly:'大富翁',ludo:'飞行棋'};
+const MONOPOLY_GROUPS = [
+  {id:'brown',name:'棕色',color:'#8B4513'},
+  {id:'lightblue',name:'浅蓝',color:'#87CEEB'},
+  {id:'pink',name:'粉色',color:'#FF69B4'},
+  {id:'orange',name:'橙色',color:'#FF8C00'},
+  {id:'red',name:'红色',color:'#DC143C'},
+  {id:'yellow',name:'黄色',color:'#FFD700'},
+  {id:'green',name:'绿色',color:'#228B22'},
+  {id:'blue',name:'蓝色',color:'#4169E1'},
+];
+const LUDO_PIECES = [{id:'blue',name:'蓝方',color:'#3498db'},{id:'yellow',name:'黄方',color:'#f0c040'},{id:'green',name:'绿方',color:'#2ecc71'},{id:'red',name:'红方',color:'#e74c3c'}];
+
+function switchSettingsGame(gt) {
+  currentSettingsGame = gt;
+  document.querySelectorAll('.sub-tab').forEach(t => t.classList.toggle('active', t.textContent === GAME_NAMES[gt]));
+  renderCurrentSettings();
+}
+
+function renderCurrentSettings() {
+  const s = allSettings[currentSettingsGame] || {bg_image:'',bg_music:'',piece_images:{},city_images:{}};
+  const gt = currentSettingsGame;
+  const container = document.getElementById('settingsContent');
+  let html = '';
+
+  // 背景图
+  html += `<div class="settings-group"><h3>背景图片</h3><div class="upload-row">
+    <div class="upload-preview">${s.bg_image ? `<img src="${s.bg_image}?t=${Date.now()}" alt="背景">` : '未设置'}</div>
+    <div class="upload-actions">
+      <label class="upload-btn">选择文件<input type="file" accept="image/*" style="display:none" onchange="uploadSetting('${gt}','bg_image',this)"></label>
+      ${s.bg_image ? `<button class="upload-btn danger" onclick="deleteSetting('${gt}','bg_image')">删除</button>` : ''}
+    </div></div></div>`;
+
+  // 背景音乐
+  html += `<div class="settings-group"><h3>背景音乐</h3><div class="upload-row">
+    <div class="upload-preview" style="width:200px;height:auto;min-height:40px">${s.bg_music ? `<audio controls src="${s.bg_music}?t=${Date.now()}"></audio>` : '未设置'}</div>
+    <div class="upload-actions">
+      <label class="upload-btn">选择文件<input type="file" accept="audio/*" style="display:none" onchange="uploadSetting('${gt}','bg_music',this)"></label>
+      ${s.bg_music ? `<button class="upload-btn danger" onclick="deleteSetting('${gt}','bg_music')">删除</button>` : ''}
+    </div></div></div>`;
+
+  // 大富翁：城市背景
+  if (gt === 'monopoly') {
+    html += `<div class="settings-group"><h3>城市背景图</h3><div class="city-grid">`;
+    MONOPOLY_GROUPS.forEach(g => {
+      const url = (s.city_images || {})[g.id] || '';
+      html += `<div class="city-item">
+        <label style="color:${g.color}">${g.name}</label>
+        <div class="upload-preview" style="width:100%;height:60px;margin:0 auto 6px">${url ? `<img src="${url}?t=${Date.now()}">` : '未设置'}</div>
+        <label class="upload-btn" style="font-size:.75em">上传<input type="file" accept="image/*" style="display:none" onchange="uploadCity('${g.id}',this)"></label>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // 飞行棋：棋子图片
+  if (gt === 'ludo') {
+    html += `<div class="settings-group"><h3>棋子图片</h3><div class="city-grid">`;
+    LUDO_PIECES.forEach(p => {
+      const url = (s.piece_images || {})[p.id] || '';
+      html += `<div class="city-item">
+        <label style="color:${p.color}">${p.name}</label>
+        <div class="upload-preview" style="width:60px;height:60px;margin:0 auto 6px;border-radius:50%">${url ? `<img src="${url}?t=${Date.now()}" style="border-radius:50%">` : '未设置'}</div>
+        <label class="upload-btn" style="font-size:.75em">上传<input type="file" accept="image/*" style="display:none" onchange="uploadPiece('${p.id}',this)"></label>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+async function uploadSetting(gt, category, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const res = await fetch(`/upload/${gt}?category=${category}`, {method:'POST', body:fd});
+    const data = await res.json();
+    if (data.ok) {
+      showToast('上传成功！');
+      send({action:'get_game_settings'});
+    } else {
+      showToast('上传失败');
+    }
+  } catch(e) { showToast('上传错误: ' + e.message); }
+}
+
+async function uploadCity(group, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const res = await fetch(`/upload/monopoly/city/${group}`, {method:'POST', body:fd});
+    const data = await res.json();
+    if (data.ok) { showToast('上传成功！'); send({action:'get_game_settings'}); }
+    else showToast('上传失败');
+  } catch(e) { showToast('上传错误: ' + e.message); }
+}
+
+async function uploadPiece(color, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const res = await fetch(`/upload/ludo/piece/${color}`, {method:'POST', body:fd});
+    const data = await res.json();
+    if (data.ok) { showToast('上传成功！'); send({action:'get_game_settings'}); }
+    else showToast('上传失败');
+  } catch(e) { showToast('上传错误: ' + e.message); }
+}
+
+async function deleteSetting(gt, category) {
+  try {
+    const res = await fetch(`/upload/${gt}/${category}`, {method:'DELETE'});
+    const data = await res.json();
+    if (data.ok) { showToast('已删除'); send({action:'get_game_settings'}); }
+  } catch(e) { showToast('删除失败: ' + e.message); }
+}
+
+function showToast(msg) {
+  let t = document.getElementById('_toast');
+  if (!t) { t = document.createElement('div'); t.id='_toast'; t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:10px 20px;border-radius:8px;font-size:.85em;z-index:99999;transition:opacity .3s'; document.body.appendChild(t); }
+  t.textContent = msg; t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>{t.style.opacity='0';}, 2500);
+}
 
 connect();
 </script>

@@ -580,7 +580,16 @@ function joinRoom(rid) {
 }
 
 function startGame() { send({ action: 'start_game' }); }
-function confirmCards() { send({ action: 'confirm_cards' }); }
+function confirmCards() {
+  try {
+    if (!ws || ws.readyState !== WebSocket.OPEN) { showToast('连接已断开，请等待重连'); return; }
+    showToast('亮牌中...');
+    send({ action: 'confirm_cards' });
+  } catch(e) {
+    console.error('confirmCards:', e);
+    showToast('操作失败: ' + e.message);
+  }
+}
 function nextRound() { send({ action: 'next_round' }); }
 function placeBet(action) {
   const amountInput = document.getElementById('raiseAmount');
@@ -608,6 +617,7 @@ function showScreen(screen) {
 function renderState() {
   const s = gameState;
   if (!s) return;
+  if (s.settings) applySettings(s.settings);
   if (s.phase === 'waiting') {
     showScreen('waiting');
     document.getElementById('roomCode').textContent = s.room_id;
@@ -657,7 +667,7 @@ function renderState() {
     const myHand = document.getElementById('myHand');
     const myResult = document.getElementById('myResult');
     const actionArea = document.getElementById('actionArea');
-    if (me && me.hand.length > 0 && me.hand[0].rank !== '?') {
+    if (me && me.hand.length > 0 && (me.confirmed || me.hand[0].rank !== '?')) {
       myHand.innerHTML = me.hand.map(c => renderCard(c, 65, 94)).join('');
       myResult.textContent = me.result ? `你的牌型: ${me.result.display}` : '';
     } else if (me && me.hand.length > 0) {
@@ -669,7 +679,9 @@ function renderState() {
     }
     if (s.phase === 'betting' && me && !me.folded) {
       const toCall = s.current_bet - me.bet;
+      const viewBtn = !me.confirmed ? `<button class="btn btn-gold" onclick="confirmCards()" style="margin-bottom:8px">亮牌</button>` : '<p style="color:rgba(255,255,255,.5);margin-bottom:8px">已亮牌</p>';
       actionArea.innerHTML = `<div class="bet-btns">
+        ${viewBtn}
         ${toCall > 0 ? `<button class="btn btn-green" onclick="placeBet('call')">跟注 ${toCall}</button>` : `<button class="btn btn-green" onclick="placeBet('call')">看牌</button>`}
         <input type="number" class="bet-amount-input" id="raiseAmount" value="${s.current_bet + s.base_bet}" min="${s.current_bet + s.base_bet}" step="${s.base_bet}">
         <button class="btn btn-gold" onclick="placeBet('raise')">加注</button>
@@ -789,6 +801,36 @@ function renderRoomList(rooms) {
 }
 function startRoomRefresh() { fetchRooms(); clearInterval(roomRefreshTimer); roomRefreshTimer = setInterval(fetchRooms, 3000); }
 function stopRoomRefresh() { clearInterval(roomRefreshTimer); }
+
+// ---- 游戏设置 ----
+let _bgMusicEl = null;
+function applySettings(st) {
+  if (st.bg_image) {
+    document.body.style.backgroundImage = `url(${st.bg_image})`;
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundAttachment = 'fixed';
+  }
+  if (st.bg_music) {
+    if (!_bgMusicEl) {
+      _bgMusicEl = document.createElement('audio');
+      _bgMusicEl.loop = true; _bgMusicEl.volume = 0.3; _bgMusicEl.style.display = 'none';
+      document.body.appendChild(_bgMusicEl);
+      const btn = document.createElement('button');
+      btn.id = 'musicToggle';
+      btn.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:9999;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.2);border-radius:50%;width:36px;height:36px;color:#fff;font-size:16px;cursor:pointer';
+      btn.textContent = '🔇';
+      btn.onclick = () => { if (_bgMusicEl.paused) { _bgMusicEl.play(); btn.textContent = '🔊'; } else { _bgMusicEl.pause(); btn.textContent = '🔇'; } };
+      document.body.appendChild(btn);
+    }
+    if (_bgMusicEl.src !== location.origin + st.bg_music) {
+      _bgMusicEl.src = st.bg_music;
+      _bgMusicEl.play().catch(()=>{});
+      const btn = document.getElementById('musicToggle');
+      if (btn) btn.textContent = '🔊';
+    }
+  }
+}
 
 loadSession();
 connect();

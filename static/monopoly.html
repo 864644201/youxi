@@ -311,7 +311,7 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.25)}
   position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
   background:rgba(15,15,30,.95);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);
   border:1px solid rgba(201,168,76,.25);border-radius:18px;padding:24px;z-index:100;
-  min-width:280px;max-width:360px;
+  width:calc(100vw - 40px);max-width:360px;max-height:80vh;overflow-y:auto;
   box-shadow:0 0 40px rgba(201,168,76,.08),0 16px 48px rgba(0,0,0,.5);
   animation:popIn .3s ease;
 }
@@ -456,7 +456,7 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.25)}
   </div>
 </div>
 
-<div id="popupOverlay" style="display:none"></div>
+<div id="popupOverlay" class="overlay" style="display:none" onclick="closePropPopup()"></div>
 <div id="propPopup" style="display:none"></div>
 
 <!-- 交易弹窗 -->
@@ -699,8 +699,8 @@ function renderActions(s){
         <div style="padding:8px 12px;background:rgba(255,82,82,.08);border-radius:10px;border:1px solid rgba(255,82,82,.12)"><strong style="color:var(--red)">换:</strong><br>${reqParts.join(', ') || '无'}</div>
       </div>
       <div class="act-btns" style="margin-top:10px">
-        <button class="btn btn-green" onclick="send({action:'accept_trade'})">接受</button>
-        <button class="btn btn-red" onclick="send({action:'reject_trade'})">拒绝</button>
+        <button class="btn btn-green" onclick="try{send({action:'accept_trade'})}catch(e){toast('操作失败')}">接受</button>
+        <button class="btn btn-red" onclick="try{send({action:'reject_trade'})}catch(e){toast('操作失败')}">拒绝</button>
       </div>
     </div>`;
     if (prompt) prompt.innerHTML = `${esc(t.proposer)}<br>想和你交易`;
@@ -709,7 +709,7 @@ function renderActions(s){
   // 发起者等待中
   if (s.trade && s.trade.proposer === myName && !s.trade.ended) {
     el.innerHTML = `<div class="act"><p style="text-align:center;color:var(--muted)">等待 ${esc(s.trade.target)} 回应交易...</p>
-      <div style="text-align:center;margin-top:8px"><button class="btn btn-sm btn-outline" onclick="send({action:'cancel_trade'})">取消交易</button></div></div>`;
+      <div style="text-align:center;margin-top:8px"><button class="btn btn-sm btn-outline" onclick="try{send({action:'cancel_trade'})}catch(e){toast('操作失败')}">取消交易</button></div></div>`;
     if (prompt) prompt.textContent = '等待对方回应...';
     return;
   }
@@ -761,7 +761,7 @@ function renderActions(s){
   if(rolledDoubles)rollLabel='双骰！再掷一次 🎲';
 
   let extra='';
-  if(me&&me.properties&&me.properties.length>0){
+  if(mt&&me&&me.properties&&me.properties.length>0){
     const mons=getMonopolies(me);
     if(mons.length>0){
       extra+='<div style="margin-top:12px"><strong style="font-size:.85em;color:var(--gold)">建筑</strong><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">';
@@ -795,8 +795,13 @@ function renderActions(s){
   if (s.phase === 'playing' && me && me.alive && !s.trade && (!s.auction || s.auction.ended)) {
     extra += '<div style="margin-top:10px;text-align:center"><button class="btn btn-sm btn-outline" onclick="showTradePanel()">发起交易 🤝</button></div>';
   }
-  el.innerHTML=`<div class="act"><div class="act-btns"><button class="btn btn-blue btn-lg${rolledDoubles?' btn-green':''}" onclick="rollDice()">${rollLabel}</button></div>${extra}</div>`;
-  if(prompt)prompt.textContent='轮到你了!';
+  if(mt){
+    el.innerHTML=`<div class="act"><div class="act-btns"><button class="btn btn-blue btn-lg${rolledDoubles?' btn-green':''}" onclick="rollDice()">${rollLabel}</button></div>${extra}</div>`;
+    if(prompt)prompt.textContent='轮到你了!';
+  }else{
+    el.innerHTML=`<div class="act">${extra||'<p style="text-align:center;color:var(--muted)">等待其他玩家行动...</p>'}</div>`;
+    if(prompt)prompt.textContent='等待中...';
+  }
 }
 
 function renderAuction(s){
@@ -833,6 +838,10 @@ function renderChat(s){
   d.scrollTop=d.scrollHeight;
 }
 
+function closePropPopup(){
+  document.getElementById('popupOverlay').style.display='none';
+  document.getElementById('propPopup').style.display='none';
+}
 function showPropDetail(idx){
   const sp=BS[idx];if(!sp||sp.type==='go'||sp.type==='jail'||sp.type==='free_parking'||sp.type==='go_to_jail'||sp.type==='chance'||sp.type==='community_chest'||sp.type==='tax')return;
   const g=CG[sp.group]||{},gs_owner=gs&&gs.board?gs.board[idx]:null;
@@ -855,8 +864,8 @@ function showPropDetail(idx){
 
   const overlay=document.getElementById('popupOverlay'),popup=document.getElementById('propPopup');
   overlay.style.display='';popup.style.display='';
-  overlay.onclick=()=>{overlay.style.display='none';popup.style.display='none';};
   popup.innerHTML=`<div class="prop-popup">
+    <div style="text-align:right;margin-bottom:-10px"><button onclick="closePropPopup()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:1.2em;cursor:pointer;padding:4px 8px">✕</button></div>
     ${g.c?`<div class="pp-color" style="background:${g.c}"></div>`:''}
     <div class="pp-name">${sp.name}</div>
     <div style="font-size:.8em;color:var(--muted)">${sp.type==='property'?'地产':sp.type==='railroad'?'铁路':'公用事业'}${g.n?' · '+g.n:''}</div>
@@ -1067,6 +1076,7 @@ function showS(s){document.getElementById('lobby').style.display=s==='lobby'?'':
 
 function renderAll(){
   const s=gs;if(!s)return;
+  if(s.settings)applySettings(s.settings);
   if(s.phase==='waiting'){
     showS('waiting');
     document.getElementById('rCode').textContent=s.room_id;
@@ -1079,6 +1089,56 @@ function renderAll(){
 }
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+// ---- 游戏设置 ----
+let _bgMusicEl = null;
+function applySettings(st) {
+  // 背景图
+  if (st.bg_image) {
+    document.body.style.backgroundImage = `url(${st.bg_image})`;
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundAttachment = 'fixed';
+  }
+  // 背景音乐
+  if (st.bg_music) {
+    if (!_bgMusicEl) {
+      _bgMusicEl = document.createElement('audio');
+      _bgMusicEl.loop = true;
+      _bgMusicEl.volume = 0.3;
+      _bgMusicEl.style.display = 'none';
+      document.body.appendChild(_bgMusicEl);
+      // 添加音乐控制按钮
+      const btn = document.createElement('button');
+      btn.id = 'musicToggle';
+      btn.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:9999;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.2);border-radius:50%;width:36px;height:36px;color:#fff;font-size:16px;cursor:pointer';
+      btn.textContent = '🔇';
+      btn.onclick = () => {
+        if (_bgMusicEl.paused) { _bgMusicEl.play(); btn.textContent = '🔊'; }
+        else { _bgMusicEl.pause(); btn.textContent = '🔇'; }
+      };
+      document.body.appendChild(btn);
+    }
+    if (_bgMusicEl.src !== location.origin + st.bg_music) {
+      _bgMusicEl.src = st.bg_music;
+      _bgMusicEl.play().catch(()=>{});
+      const btn = document.getElementById('musicToggle');
+      if (btn) btn.textContent = '🔊';
+    }
+  }
+  // 大富翁城市背景
+  if (st.city_images) {
+    document.querySelectorAll('.cell[data-idx]').forEach(cell => {
+      const idx = parseInt(cell.dataset.idx);
+      const sp = typeof BS !== 'undefined' && BS[idx];
+      if (sp && sp.group && st.city_images[sp.group]) {
+        cell.style.backgroundImage = `url(${st.city_images[sp.group]})`;
+        cell.style.backgroundSize = 'cover';
+        cell.style.backgroundPosition = 'center';
+      }
+    });
+  }
+}
 function toast(m){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2500);}
 
 document.getElementById('cName').addEventListener('keydown',e=>{if(e.key==='Enter')createRoom();});

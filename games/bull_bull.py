@@ -188,6 +188,7 @@ class BullBullRoom(BaseGameRoom):
             swaps = min(abs(luck), 3)
             used = {(c.suit, c.rank) for c in p["hand"]}
             remaining = [c for c in self.deck if (c.suit, c.rank) not in used]
+            swapped_out = set()
             for _ in range(swaps):
                 if not remaining:
                     break
@@ -195,12 +196,15 @@ class BullBullRoom(BaseGameRoom):
                     weakest_idx = min(range(len(p["hand"])), key=lambda i: p["hand"][i].value)
                     best = max(remaining, key=lambda c: c.value)
                     remaining.remove(best)
+                    swapped_out.add((p["hand"][weakest_idx].suit, p["hand"][weakest_idx].rank))
                     p["hand"][weakest_idx] = best
                 else:
                     strongest_idx = max(range(len(p["hand"])), key=lambda i: p["hand"][i].value)
                     worst = min(remaining, key=lambda c: c.value)
                     remaining.remove(worst)
+                    swapped_out.add((p["hand"][strongest_idx].suit, p["hand"][strongest_idx].rank))
                     p["hand"][strongest_idx] = worst
+                remaining = [c for c in remaining if (c.suit, c.rank) not in swapped_out]
             used_after = {(c.suit, c.rank) for c in p["hand"]}
             self.deck = [c for c in self.deck if (c.suit, c.rank) not in used_after]
 
@@ -268,7 +272,7 @@ class BullBullRoom(BaseGameRoom):
 
     def place_bet(self, name: str, action: str, amount: int = 0) -> dict:
         for p in self.players:
-            if p["name"] != name or p["folded"] or p["confirmed"]:
+            if p["name"] != name or p["folded"]:
                 continue
             to_call = self.current_bet - p["bet"]
             if action == "fold":
@@ -315,6 +319,8 @@ class BullBullRoom(BaseGameRoom):
                 p["folded"] = True
 
     def confirm_cards(self, name: str) -> bool:
+        if self.bet_mode == "raise" and not self.check_betting_done():
+            return False
         for p in self.players:
             if p["name"] == name and not p["confirmed"] and not p["folded"]:
                 p["confirmed"] = True
@@ -346,15 +352,22 @@ class BullBullRoom(BaseGameRoom):
             }
             if is_host:
                 info["luck"] = p.get("luck", 0)
-            if self.phase in ("betting", "playing", "finished") and p["hand"]:
-                if p["folded"]:
-                    info["hand"] = [{"suit": "?", "rank": "?", "symbol": "?", "color": "gray"}] * 5
-                elif p["confirmed"] or self.phase == "finished":
+            if p["hand"]:
+                if p["confirmed"]:
                     info["hand"] = [c.to_dict() for c in p["hand"]]
                     if p["result"]:
                         info["result"] = p["result"].to_dict()
+                elif self.phase == "finished":
+                    info["hand"] = [c.to_dict() for c in p["hand"]]
+                    if p["result"]:
+                        info["result"] = p["result"].to_dict()
+                elif self.phase in ("betting", "playing"):
+                    if p["folded"]:
+                        info["hand"] = [{"suit": "?", "rank": "?", "symbol": "?", "color": "gray"}] * 5
+                    else:
+                        info["hand"] = [{"suit": "?", "rank": "?", "symbol": "?", "color": "gray"}] * 5
                 else:
-                    info["hand"] = [{"suit": "?", "rank": "?", "symbol": "?", "color": "gray"}] * 5
+                    info["hand"] = []
             else:
                 info["hand"] = []
             players_info.append(info)

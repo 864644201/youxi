@@ -242,6 +242,7 @@ class LudoRoom(BaseGameRoom):
         if pos < 0:
             return None
 
+        captures = []
         for color, pieces in self.pieces.items():
             if color == mover_color:
                 continue
@@ -251,7 +252,10 @@ class LudoRoom(BaseGameRoom):
                     pname = next((pl["name"] for pl in self.players
                                  if self.player_colors.get(pl["name"]) == color), COLOR_NAMES[color])
                     self._add_event(f"💥 {COLOR_NAMES[mover_color]}方撞了{COLOR_NAMES[color]}方的飞机！", "💥", "action")
-                    return {"captured_player": pname, "captured_color": color, "captured_piece": i}
+                    captures.append({"captured_player": pname, "captured_color": color, "captured_piece": i})
+        if captures:
+            captures[0]["all_captures"] = captures
+            return captures[0]
         return None
 
     def get_state(self, viewer: str = None) -> dict:

@@ -9,9 +9,9 @@ import sqlite3
 import logging
 from pathlib import Path
 from datetime import datetime
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from games import create_room, GAME_TYPES
 from games.bull_bull import BullBullRoom, BET_MODES, evaluate_hand
 from games.monopoly import MonopolyRoom
@@ -85,6 +85,17 @@ def _init_db():
         total_games INTEGER DEFAULT 0,
         total_wins INTEGER DEFAULT 0
     )""")
+    c.execute("""CREATE TABLE IF NOT EXISTS game_settings (
+        game_type TEXT PRIMARY KEY,
+        bg_image TEXT DEFAULT '',
+        bg_music TEXT DEFAULT '',
+        piece_images TEXT DEFAULT '{}',
+        city_images TEXT DEFAULT '{}',
+        updated_at TEXT DEFAULT (datetime('now','localtime'))
+    )""")
+    # 初始化默认设置
+    for gt in ['bull_bull', 'monopoly', 'ludo']:
+        c.execute("INSERT OR IGNORE INTO game_settings (game_type) VALUES (?)", (gt,))
     conn.commit()
     conn.close()
 
@@ -180,12 +191,21 @@ async def broadcast_room(room_id: str):
     if room_id not in rooms or room_id not in player_rooms:
         return
     room = rooms[room_id]
+    game_type = getattr(room, 'game_type', 'bull_bull')
+    settings = _get_game_settings(game_type)
+    settings_data = {
+        "bg_image": settings.get("bg_image", ""),
+        "bg_music": settings.get("bg_music", ""),
+        "piece_images": json.loads(settings.get("piece_images", "{}")),
+        "city_images": json.loads(settings.get("city_images", "{}")),
+    }
     for ws_id in list(player_rooms[room_id]):
         if ws_id not in connections:
             continue
         conn = connections[ws_id]
         try:
             state = room.get_state(viewer=conn["name"])
+            state["settings"] = settings_data
             await conn["ws"].send_json({"type": "game_state", "data": state})
         except Exception as e:
             logger.warning(f"broadcast_room error for {conn.get('name','?')}: {e}")
@@ -968,10 +988,164 @@ async def admin_websocket(ws: WebSocket):
                 player_rooms.clear()
                 await ws.send_json({"type": "rooms_overview", "data": get_rooms_overview()})
 
+            elif action == "get_game_settings":
+                all_settings = _get_game_settings()
+                # 转换 JSON 字符串字段
+                for gt, s in all_settings.items():
+                    s["piece_images"] = json.loads(s.get("piece_images", "{}"))
+                    s["city_images"] = json.loads(s.get("city_images", "{}"))
+                await ws.send_json({"type": "game_settings", "data": all_settings})
+
     except WebSocketDisconnect:
         pass
     finally:
         admin_connections.pop(admin_ws_id, None)
+
+
+# ============ 文件上传 & 游戏设置 ============
+
+UPLOAD_DIR = Path(__file__).parent / "static" / "uploads"
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+ALLOWED_AUDIO_TYPES = {"audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/webm"}
+
+def _ensure_upload_dirs():
+    for gt in ["bull_bull", "monopoly", "ludo"]:
+        (UPLOAD_DIR / gt).mkdir(parents=True, exist_ok=True)
+
+_ensure_upload_dirs()
+
+def _get_game_settings(game_type: str = None) -> dict:
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    if game_type:
+        c.execute("SELECT * FROM game_settings WHERE game_type=?", (game_type,))
+        row = c.fetchone()
+        conn.close()
+        if row:
+            return dict(row)
+        return {"game_type": game_type, "bg_image": "", "bg_music": "", "piece_images": "{}", "city_images": "{}"}
+    else:
+        c.execute("SELECT * FROM game_settings")
+        rows = c.fetchall()
+        conn.close()
+        return {r["game_type"]: dict(r) for r in rows}
+
+def _set_game_setting(game_type: str, field: str, value: str):
+    if field not in ("bg_image", "bg_music", "piece_images", "city_images"):
+        return False
+    conn = sqlite3.connect(str(DB_PATH))
+    c = conn.cursor()
+    c.execute(f"UPDATE game_settings SET {field}=?, updated_at=datetime('now','localtime') WHERE game_type=?",
+              (value, game_type))
+    conn.commit()
+    conn.close()
+    return True
+
+@app.post("/upload/{game_type}")
+async def upload_file(game_type: str, file: UploadFile = File(...), category: str = "bg_image"):
+    if game_type not in ("bull_bull", "monopoly", "ludo"):
+        raise HTTPException(400, "无效的游戏类型")
+    if category not in ("bg_image", "bg_music", "piece_image", "city_image"):
+        raise HTTPException(400, "无效的分类")
+
+    content_type = file.content_type or ""
+    is_image = content_type in ALLOWED_IMAGE_TYPES
+    is_audio = content_type in ALLOWED_AUDIO_TYPES
+
+    if category in ("bg_image", "piece_image", "city_image") and not is_image:
+        raise HTTPException(400, f"不支持的图片格式: {content_type}")
+    if category == "bg_music" and not is_audio:
+        raise HTTPException(400, f"不支持的音频格式: {content_type}")
+
+    ext = os.path.splitext(file.filename)[1] if file.filename else (".jpg" if is_image else ".mp3")
+    safe_name = f"{category}{ext}"
+    dest_dir = UPLOAD_DIR / game_type
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest_path = dest_dir / safe_name
+
+    content = await file.read()
+    with open(dest_path, "wb") as f:
+        f.write(content)
+
+    url = f"/static/uploads/{game_type}/{safe_name}"
+
+    # 更新数据库设置
+    if category == "bg_image":
+        _set_game_setting(game_type, "bg_image", url)
+    elif category == "bg_music":
+        _set_game_setting(game_type, "bg_music", url)
+
+    return JSONResponse({"ok": True, "url": url})
+
+@app.post("/upload/{game_type}/piece/{color}")
+async def upload_piece(game_type: str, color: str, file: UploadFile = File(...)):
+    if game_type != "ludo":
+        raise HTTPException(400, "棋子上传仅支持飞行棋")
+    if color not in ("blue", "yellow", "green", "red"):
+        raise HTTPException(400, "无效的颜色")
+
+    content_type = file.content_type or ""
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(400, f"不支持的图片格式: {content_type}")
+
+    ext = os.path.splitext(file.filename)[1] if file.filename else ".png"
+    safe_name = f"piece_{color}{ext}"
+    dest_dir = UPLOAD_DIR / game_type
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest_path = dest_dir / safe_name
+
+    content = await file.read()
+    with open(dest_path, "wb") as f:
+        f.write(content)
+
+    url = f"/static/uploads/{game_type}/{safe_name}"
+
+    # 更新 piece_images JSON
+    settings = _get_game_settings(game_type)
+    pieces = json.loads(settings.get("piece_images", "{}"))
+    pieces[color] = url
+    _set_game_setting(game_type, "piece_images", json.dumps(pieces))
+
+    return JSONResponse({"ok": True, "url": url})
+
+@app.post("/upload/{game_type}/city/{group}")
+async def upload_city(game_type: str, group: str, file: UploadFile = File(...)):
+    if game_type != "monopoly":
+        raise HTTPException(400, "城市背景上传仅支持大富翁")
+
+    content_type = file.content_type or ""
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(400, f"不支持的图片格式: {content_type}")
+
+    ext = os.path.splitext(file.filename)[1] if file.filename else ".jpg"
+    safe_name = f"city_{group}{ext}"
+    dest_dir = UPLOAD_DIR / game_type
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest_path = dest_dir / safe_name
+
+    content = await file.read()
+    with open(dest_path, "wb") as f:
+        f.write(content)
+
+    url = f"/static/uploads/{game_type}/{safe_name}"
+
+    settings = _get_game_settings(game_type)
+    cities = json.loads(settings.get("city_images", "{}"))
+    cities[group] = url
+    _set_game_setting(game_type, "city_images", json.dumps(cities))
+
+    return JSONResponse({"ok": True, "url": url})
+
+@app.delete("/upload/{game_type}/{category}")
+async def delete_upload(game_type: str, category: str):
+    if game_type not in ("bull_bull", "monopoly", "ludo"):
+        raise HTTPException(400, "无效的游戏类型")
+    if category == "bg_image":
+        _set_game_setting(game_type, "bg_image", "")
+    elif category == "bg_music":
+        _set_game_setting(game_type, "bg_music", "")
+    return JSONResponse({"ok": True})
 
 
 # 挂载静态文件
