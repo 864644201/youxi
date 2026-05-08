@@ -713,6 +713,12 @@ function renderActions(s){
     if (prompt) prompt.textContent = '等待对方回应...';
     return;
   }
+  // 旁观者看到交易进行中
+  if (s.trade && !s.trade.ended) {
+    el.innerHTML = `<div class="act"><p style="text-align:center;color:var(--muted)">⏳ ${esc(s.trade.proposer)} ↔ ${esc(s.trade.target)} 交易进行中...</p></div>`;
+    if (prompt) prompt.textContent = '交易进行中...';
+    return;
+  }
 
   if(s.phase==='finished'){
     const w=s.players.find(p=>p.alive);
@@ -785,8 +791,8 @@ function renderActions(s){
       extra+='</div></div>';
     }
   }
-  // 交易按钮
-  if (s.phase === 'playing' && mt && !s.pending_action && (!s.auction || s.auction.ended)) {
+  // 交易按钮 — 任何存活玩家都可以发起交易
+  if (s.phase === 'playing' && me && me.alive && !s.trade && (!s.auction || s.auction.ended)) {
     extra += '<div style="margin-top:10px;text-align:center"><button class="btn btn-sm btn-outline" onclick="showTradePanel()">发起交易 🤝</button></div>';
   }
   el.innerHTML=`<div class="act"><div class="act-btns"><button class="btn btn-blue btn-lg${rolledDoubles?' btn-green':''}" onclick="rollDice()">${rollLabel}</button></div>${extra}</div>`;

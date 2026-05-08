@@ -643,8 +643,11 @@ class MonopolyRoom(BaseGameRoom):
     def pass_auction(self, name: str) -> dict:
         if not self.auction or self.auction.get("ended"):
             return {"ok": False, "error": "没有进行中的拍卖"}
-        if name in self.auction["players"]:
-            self.auction["players"].remove(name)
+        if name not in self.auction["players"]:
+            return {"ok": False, "error": "你已经放弃了"}
+
+        # 从竞拍者列表中移除
+        self.auction["players"].remove(name)
 
         # 如果当前最高出价者放弃，降级为次高出价
         if self.auction.get("highest_bidder") == name:
@@ -660,10 +663,18 @@ class MonopolyRoom(BaseGameRoom):
             self.auction["highest_bidder"] = best_player
             self.auction["price"] = best_amount
 
-        # 检查是否只剩一个出价者
-        active_bidders = [p for p in self.auction["players"] if p != self.auction.get("highest_bidder")]
-        if len(active_bidders) == 0 or len(self.auction["players"]) <= 1:
+        # 检查拍卖是否结束
+        remaining_players = self.auction["players"]
+        highest_bidder = self.auction.get("highest_bidder")
+
+        if len(remaining_players) == 0:
+            # 所有人都放弃了
             return self._end_auction()
+
+        if len(remaining_players) == 1 and remaining_players[0] == highest_bidder:
+            # 只剩最高出价者，没有人能出更高价了
+            return self._end_auction()
+
         return {"ok": True, "passed": True}
 
     def _end_auction(self) -> dict:
@@ -673,7 +684,8 @@ class MonopolyRoom(BaseGameRoom):
         pos = self.auction["space"]
         from_doubles = self.auction.get("from_doubles", False)
         sp = BOARD_SPACES[pos]
-        if winner and price > 0:
+        # 如果最高出价者已不在玩家列表中（被移除），仍需验证其有效性
+        if winner and price > 0 and winner in self.player_cash:
             self.player_cash[winner] -= price
             self.properties[pos] = winner
             self.houses[pos] = 0
@@ -873,16 +885,19 @@ class MonopolyRoom(BaseGameRoom):
         """发起交易提议
         offer: {"cash": int, "properties": [int, ...]}
         request: {"cash": int, "properties": [int, ...]}
+        任何存活的玩家都可以发起交易，不限于当前回合玩家
         """
-        cp = self.current_player
-        if not cp or cp["name"] != proposer:
-            return {"ok": False, "error": "不是你的回合"}
+        if self.phase != "playing":
+            return {"ok": False, "error": "游戏尚未开始"}
+        proposer_alive = any(p["name"] == proposer and p.get("alive", True) for p in self.players)
+        if not proposer_alive:
+            return {"ok": False, "error": "你已破产"}
         if proposer == target:
             return {"ok": False, "error": "不能和自己交易"}
         if self.trade and not self.trade.get("ended"):
             return {"ok": False, "error": "已有进行中的交易"}
-        if self.pending_action:
-            return {"ok": False, "error": "请先处理当前操作"}
+        if self.auction and not self.auction.get("ended"):
+            return {"ok": False, "error": "拍卖进行中，不能交易"}
 
         target_alive = any(p["name"] == target and p.get("alive", True) for p in self.players)
         if not target_alive:
