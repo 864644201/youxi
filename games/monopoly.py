@@ -668,6 +668,12 @@ class MonopolyRoom(BaseGameRoom):
         self.auction["highest_bidder"] = name
         self.auction["bids"][name] = amount
         self._add_event(f"{name} 出价 ${amount}", "🔨", "auction")
+
+        # 如果只剩一个竞拍者且已出价，直接结束拍卖
+        remaining = self.auction["players"]
+        if len(remaining) == 1 and remaining[0] == name:
+            return self._end_auction()
+
         return {"ok": True, "bid": amount}
 
     def pass_auction(self, name: str) -> dict:

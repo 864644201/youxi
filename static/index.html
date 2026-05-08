@@ -187,6 +187,14 @@ body{
 .card-ludo::before{background:radial-gradient(ellipse at 50% 80%,rgba(0,230,118,.06) 0%,transparent 60%)}
 .card-ludo:hover{border-color:rgba(0,230,118,.15)}
 
+.card-mine{
+  --accent:linear-gradient(135deg,#e040fb,#7c4dff);
+  --glow:rgba(124,77,255,.12);
+  --btn-text:#fff;
+}
+.card-mine::before{background:radial-gradient(ellipse at 40% 40%,rgba(124,77,255,.06) 0%,transparent 60%)}
+.card-mine:hover{border-color:rgba(124,77,255,.15)}
+
 /* ── Sections ── */
 .section-title{
   font-size:1.1em;font-weight:600;margin-bottom:14px;
@@ -238,6 +246,7 @@ body{
 .rc-badge.bull_bull{background:rgba(255,215,0,.1);color:#ffd700;--rc-accent:#ffd700}
 .rc-badge.monopoly{background:rgba(79,195,247,.1);color:#4fc3f7;--rc-accent:#4fc3f7}
 .rc-badge.ludo{background:rgba(0,230,118,.1);color:#00e676;--rc-accent:#00e676}
+.rc-badge.mine_monopoly{background:rgba(124,77,255,.1);color:#e040fb;--rc-accent:#e040fb}
 .room-card .rc-info{font-size:.78em;color:rgba(255,255,255,.3)}
 .room-card .rc-players{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .room-card .rc-tag{
@@ -353,6 +362,17 @@ body{
           <span>🎯 经典飞行棋</span>
         </div>
         <a class="gc-btn" href="/ludo" onclick="event.stopPropagation()">进入游戏</a>
+      </div>
+
+      <div class="game-card card-mine" onclick="location.href='http://localhost:3080'">
+        <span class="gc-icon">⛏️</span>
+        <div class="gc-name">3D大富翁</div>
+        <div class="gc-desc">Three.js 3D渲染，WebRTC实时对战。买地建房，策略经营，全新3D体验。</div>
+        <div class="gc-meta">
+          <span>👥 2-6人</span>
+          <span>🎯 3D多人对战</span>
+        </div>
+        <a class="gc-btn" href="http://localhost:3080" onclick="event.stopPropagation()">进入游戏</a>
       </div>
     </div>
 

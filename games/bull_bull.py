@@ -362,7 +362,10 @@ class BullBullRoom(BaseGameRoom):
                     if p["result"]:
                         info["result"] = p["result"].to_dict()
                 elif self.phase in ("betting", "playing"):
-                    if p["folded"]:
+                    # 查看者可以看到自己的牌
+                    if viewer and p["name"] == viewer:
+                        info["hand"] = [c.to_dict() for c in p["hand"]]
+                    elif p["folded"]:
                         info["hand"] = [{"suit": "?", "rank": "?", "symbol": "?", "color": "gray"}] * 5
                     else:
                         info["hand"] = [{"suit": "?", "rank": "?", "symbol": "?", "color": "gray"}] * 5

@@ -315,6 +315,11 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.25)}
   box-shadow:0 0 40px rgba(201,168,76,.08),0 16px 48px rgba(0,0,0,.5);
   animation:popIn .3s ease;
 }
+.prop-popup .pp-close{
+  position:absolute;top:8px;right:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);
+  color:rgba(255,255,255,.7);font-size:1.1em;cursor:pointer;border-radius:50%;
+  width:36px;height:36px;display:flex;align-items:center;justify-content:center;z-index:2;
+}
 @keyframes popIn{from{opacity:0;transform:translate(-50%,-50%) scale(.9)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 .prop-popup .pp-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .prop-popup .pp-color{width:100%;height:14px;border-radius:7px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
@@ -811,11 +816,15 @@ function renderAuction(s){
   const old=document.querySelector('.auction-panel');if(old)old.remove();
   const div=document.createElement('div');div.className='auction-panel';
   const canBid=a.players&&a.players.includes(myName);
+  const isOnlyBidder=canBid&&a.players.length===1&&a.highest_bidder===myName;
+  const isSolePlayer=canBid&&a.players.length===1&&!a.highest_bidder;
   div.innerHTML=`<h3>🔨 拍卖: ${sp.name}</h3>
     ${g?`<div style="display:inline-block;padding:3px 10px;border-radius:6px;background:${g.c};color:#fff;font-size:.8em">${g.n}</div>`:''}
     <div class="a-price">$${a.price}</div>
     <div class="a-bidder">${a.highest_bidder?`最高出价: ${a.highest_bidder}`:'无人出价'}</div>
-    ${canBid?`<div class="auction-input"><input type="number" id="bidAmount" value="${Math.max(a.price,0)+10}" min="${Math.max(a.price,1)}" step="10"><button class="btn btn-gold" onclick="bidAuction()">出价</button><button class="btn btn-outline" onclick="passAuction()">放弃</button></div>`:`<p style="color:var(--muted);font-size:.8em">${myName} 不能参与此拍卖</p>`}
+    ${isOnlyBidder?`<p style="color:var(--gold);font-size:.9em;text-align:center">你是唯一竞拍者，等待结算...</p>`:
+      canBid?`<div class="auction-input"><input type="number" id="bidAmount" value="${Math.max(a.price,0)+10}" min="${Math.max(a.price,1)}" step="10"><button class="btn btn-gold" onclick="bidAuction()">出价</button>${!isSolePlayer?'<button class="btn btn-outline" onclick="passAuction()">放弃</button>':''}</div>`:
+      `<p style="color:var(--muted);font-size:.8em">${myName} 不能参与此拍卖</p>`}
   `;
   el.after(div);
   // also show in center
@@ -865,7 +874,7 @@ function showPropDetail(idx){
   const overlay=document.getElementById('popupOverlay'),popup=document.getElementById('propPopup');
   overlay.style.display='';popup.style.display='';
   popup.innerHTML=`<div class="prop-popup">
-    <div style="text-align:right;margin-bottom:-10px"><button onclick="closePropPopup()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:1.2em;cursor:pointer;padding:4px 8px">✕</button></div>
+    <button class="pp-close" onclick="closePropPopup()">✕</button>
     ${g.c?`<div class="pp-color" style="background:${g.c}"></div>`:''}
     <div class="pp-name">${sp.name}</div>
     <div style="font-size:.8em;color:var(--muted)">${sp.type==='property'?'地产':sp.type==='railroad'?'铁路':'公用事业'}${g.n?' · '+g.n:''}</div>

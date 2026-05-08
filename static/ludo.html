@@ -219,7 +219,7 @@ input[type="text"]::placeholder{color:rgba(255,255,255,.25)}
 @media(max-width:500px){
   .container{padding:6px}
   .board{width:95vmin;height:95vmin}
-  .piece{width:16px;height:16px;font-size:8px}
+  .piece{width:14px;height:14px;font-size:7px}
   #lobby h1{font-size:2em}
 }
 </style>
@@ -455,8 +455,10 @@ function renderBoard(s){
       piece.textContent=idx+1;
       piece.title=p.name+' 的飞机 '+(idx+1);
       const existing=piece.parentElement?0:cellEl.querySelectorAll('.piece').length;
-      const offsets=[[2,2],[22,2],[2,22],[22,22]];
-      const[ox,oy]=offsets[existing%4]||[12,12];
+      const cw=cellEl.offsetWidth||24,ch=cellEl.offsetHeight||24;
+      const pw=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pw'))||(window.innerWidth<=500?14:22);
+      const ox=existing%2===0?1:Math.max(2,cw-pw-1);
+      const oy=existing<2?1:Math.max(2,ch-pw-1);
       piece.style.left=ox+'px';piece.style.top=oy+'px';
       const isMovable=cp&&cp.name===myName&&movableSet.has(idx)&&p.name===myName;
       if(isMovable){piece.classList.add('movable');piece.onclick=(e)=>{e.stopPropagation();movePiece(idx);};}
