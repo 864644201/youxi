@@ -659,7 +659,9 @@ async def websocket_endpoint(ws: WebSocket):
                 room = rooms.get(conn["room"])
                 if not room:
                     continue
+                print(f"[AUCTION] {conn['name']} pass_auction in room {conn['room']}")
                 result = room.pass_auction(conn["name"])
+                print(f"[AUCTION] result: {result}")
                 if result.get("ok"):
                     await broadcast_room(conn["room"])
                 else:

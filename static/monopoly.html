@@ -810,7 +810,7 @@ function renderAuction(s){
     ${g?`<div style="display:inline-block;padding:3px 10px;border-radius:6px;background:${g.c};color:#fff;font-size:.8em">${g.n}</div>`:''}
     <div class="a-price">$${a.price}</div>
     <div class="a-bidder">${a.highest_bidder?`最高出价: ${a.highest_bidder}`:'无人出价'}</div>
-    ${canBid?`<div class="auction-input"><input type="number" id="bidAmount" value="${a.price+10}" min="${a.price+1}" step="10"><button class="btn btn-gold" onclick="bidAuction()">出价</button><button class="btn btn-outline" onclick="passAuction()">放弃</button></div>`:`<p style="color:var(--muted);font-size:.8em">${myName} 不能参与此拍卖</p>`}
+    ${canBid?`<div class="auction-input"><input type="number" id="bidAmount" value="${Math.max(a.price,0)+10}" min="${Math.max(a.price,1)}" step="10"><button class="btn btn-gold" onclick="bidAuction()">出价</button><button class="btn btn-outline" onclick="passAuction()">放弃</button></div>`:`<p style="color:var(--muted);font-size:.8em">${myName} 不能参与此拍卖</p>`}
   `;
   el.after(div);
   // also show in center
@@ -1058,8 +1058,8 @@ function mortgageProp(p){send({action:'mortgage_property',position:p});}
 function unmortgageProp(p){send({action:'unmortgage_property',position:p});}
 function payJailFine(){send({action:'pay_jail_fine'});}
 function useJailCard(){send({action:'use_jail_card'});}
-function bidAuction(){const el=document.getElementById('bidAmount');if(!el){toast('出价输入框不存在');return;}const v=parseInt(el.value)||0;if(v<=0){toast('请输入有效金额');return;}send({action:'bid_auction',amount:v});}
-function passAuction(){send({action:'pass_auction'});}
+function bidAuction(){try{const el=document.getElementById('bidAmount');if(!el){toast('出价输入框不存在');return;}const v=parseInt(el.value)||0;if(v<=0){toast('请输入有效金额');return;}send({action:'bid_auction',amount:v});}catch(e){console.error('bidAuction:',e);toast('出价失败: '+e.message);}}
+function passAuction(){try{toast('放弃竞拍...');send({action:'pass_auction'});}catch(e){console.error('passAuction:',e);toast('操作失败: '+e.message);}}
 function sendChat(){const i=document.getElementById('chatIn'),m=i.value.trim();if(!m)return;send({action:'chat',message:m});i.value='';}
 function copyCode(){navigator.clipboard.writeText(roomId).then(()=>toast('已复制!'));}
 

@@ -630,6 +630,8 @@ class MonopolyRoom(BaseGameRoom):
             return {"ok": False, "error": "没有进行中的拍卖"}
         if name not in self.auction["players"]:
             return {"ok": False, "error": "你不能参与此拍卖"}
+        if amount <= 0:
+            return {"ok": False, "error": "出价必须大于0"}
         if amount <= self.auction["price"]:
             return {"ok": False, "error": "出价必须高于当前最高价"}
         if self.player_cash.get(name, 0) < amount:
